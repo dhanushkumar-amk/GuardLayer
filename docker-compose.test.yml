@@ -3,16 +3,12 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15
-    container_name: guardlayer-postgres
-    restart: unless-stopped
+    container_name: guardlayer-postgres-test
+    restart: "no"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -20,28 +16,26 @@ services:
       retries: 5
       start_period: 5s
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   redis:
     image: redis:7-alpine
-    container_name: guardlayer-redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT}:6379"
+    container_name: guardlayer-redis-test
+    restart: "no"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   db-migrations:
     build:
       context: ./services/db-migrations
       dockerfile: Dockerfile
-    container_name: guardlayer-db-migrations
-    restart: on-failure
+    container_name: guardlayer-db-migrations-test
+    restart: "no"
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_USER: ${POSTGRES_USER}
@@ -52,16 +46,14 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   config-service:
     build:
       context: ./services/config-service
       dockerfile: Dockerfile
-    container_name: guardlayer-config-service
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
+    container_name: guardlayer-config-service-test
+    restart: "no"
     environment:
       PORT: 3001
       POSTGRES_HOST: postgres
@@ -85,16 +77,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   input-guard:
     build:
       context: ./services/input-guard
       dockerfile: Dockerfile
-    container_name: guardlayer-input-guard
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
+    container_name: guardlayer-input-guard-test
+    restart: "no"
     environment:
       PORT: 8001
       REDIS_HOST: redis
@@ -110,16 +100,14 @@ services:
       retries: 10
       start_period: 30s
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   output-guard:
     build:
       context: ./services/output-guard
       dockerfile: Dockerfile
-    container_name: guardlayer-output-guard
-    restart: unless-stopped
-    ports:
-      - "8002:8002"
+    container_name: guardlayer-output-guard-test
+    restart: "no"
     environment:
       PORT: 8002
       REDIS_HOST: redis
@@ -135,16 +123,14 @@ services:
       retries: 15
       start_period: 45s
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   llm-proxy:
     build:
       context: ./services/llm-proxy
       dockerfile: Dockerfile
-    container_name: guardlayer-llm-proxy
-    restart: unless-stopped
-    ports:
-      - "8003:8003"
+    container_name: guardlayer-llm-proxy-test
+    restart: "no"
     environment:
       PORT: 8003
     healthcheck:
@@ -153,16 +139,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   audit-service:
     build:
       context: ./services/audit-service
       dockerfile: Dockerfile
-    container_name: guardlayer-audit-service
-    restart: unless-stopped
-    ports:
-      - "8004:8004"
+    container_name: guardlayer-audit-service-test
+    restart: "no"
     environment:
       PORT: 8004
       POSTGRES_HOST: postgres
@@ -185,16 +169,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
 
   api-gateway:
     build:
       context: ./services/api-gateway
       dockerfile: Dockerfile
-    container_name: guardlayer-api-gateway
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
+    container_name: guardlayer-api-gateway-test
+    restart: "no"
     environment:
       PORT: 8080
       POSTGRES_HOST: postgres
@@ -227,12 +209,29 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - guardlayer-network
+      - guardlayer-network-test
+
+  integration-tests:
+    build:
+      context: .
+      dockerfile: tests/integration/Dockerfile
+    container_name: guardlayer-integration-tests
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      audit-service:
+        condition: service_healthy
+      input-guard:
+        condition: service_healthy
+      output-guard:
+        condition: service_healthy
+      llm-proxy:
+        condition: service_healthy
+    networks:
+      - guardlayer-network-test
 
 networks:
-  guardlayer-network:
+  guardlayer-network-test:
     driver: bridge
-
-volumes:
-  postgres_data:
-    driver: local
