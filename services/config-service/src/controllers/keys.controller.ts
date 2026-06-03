@@ -1,33 +1,30 @@
-import { Router, Request, Response } from 'express';
+import { Response } from 'express';
 import bcrypt from 'bcrypt';
-import pool from '../db/client';
-import { generateApiKey, getPrefix } from '../utils/keygen';
-import Redis from 'ioredis';
+import crypto from 'crypto';
+import pool from '../db/postgres';
+import redis from '../db/redis';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
-const router = Router();
-
-// ioredis client
-const redis = new Redis({
-  host: process.env.REDIS_HOST || 'redis',
-  port: parseInt(process.env.REDIS_PORT || '6379', 10),
-});
-
-// POST /api/keys - Create a new API key
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/keys - Create API Key
+export const createKey = async (req: AuthenticatedRequest, res: Response) => {
   const { name } = req.body;
   if (!name || typeof name !== 'string') {
-    return res.status(400).json({ error: 'Name is required and must be a string' });
+    return res.status(400).json({
+      error: 'Name is required and must be a string',
+      code: 'BAD_REQUEST_INVALID_NAME',
+    });
   }
 
   const client = await pool.connect();
   try {
-    const rawKey = generateApiKey();
-    const prefix = getPrefix(rawKey);
+    // Generate api key in format gl-xxxxxxxxxxxxxxxx (32 hex characters after gl-)
+    const rawKey = `gl-${crypto.randomBytes(16).toString('hex')}`;
+    const prefix = rawKey.substring(0, 8); // e.g. "gl-f3e1b"
     const hashedKey = await bcrypt.hash(rawKey, 10);
 
     await client.query('BEGIN');
 
-    // 1. Create API key row
+    // 1. Insert into api_keys
     const keyResult = await client.query(
       `INSERT INTO api_keys (name, key_hash, key_prefix)
        VALUES ($1, $2, $3)
@@ -36,7 +33,7 @@ router.post('/', async (req: Request, res: Response) => {
     );
     const newKey = keyResult.rows[0];
 
-    // 2. Create linked configuration row with defaults
+    // 2. Create linked default config row
     const configResult = await client.query(
       `INSERT INTO config (api_key_id)
        VALUES ($1)
@@ -45,7 +42,7 @@ router.post('/', async (req: Request, res: Response) => {
     );
     const newConfig = configResult.rows[0];
 
-    // 3. Update API key with the config_id
+    // 3. Update key with reference to config
     await client.query(
       `UPDATE api_keys SET config_id = $1 WHERE id = $2`,
       [newConfig.id, newKey.id]
@@ -56,21 +53,24 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(201).json({
       id: newKey.id,
       name: newKey.name,
-      key: rawKey, // Shown once only
+      key: rawKey, // Plain key returned once only
       key_prefix: newKey.key_prefix,
       created_at: newKey.created_at,
     });
   } catch (error: any) {
     await client.query('ROLLBACK');
     console.error('Error creating API key:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_SERVER_ERROR',
+    });
   } finally {
     client.release();
   }
-});
+};
 
-// GET /api/keys - List all API keys
-router.get('/', async (req: Request, res: Response) => {
+// GET /api/keys - List all keys
+export const listKeys = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await pool.query(
       `SELECT id, name, key_prefix, is_active, created_at, last_used_at
@@ -80,12 +80,15 @@ router.get('/', async (req: Request, res: Response) => {
     return res.json(result.rows);
   } catch (error: any) {
     console.error('Error listing API keys:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_SERVER_ERROR',
+    });
   }
-});
+};
 
-// DELETE /api/keys/:id - Revoke API key
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/keys/:id - Revoke key
+export const revokeKey = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
@@ -97,17 +100,21 @@ router.delete('/:id', async (req: Request, res: Response) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'API key not found' });
+      return res.status(404).json({
+        error: 'API key not found',
+        code: 'NOT_FOUND_API_KEY',
+      });
     }
 
-    // Invalidate Redis cache
+    // Invalidate config cache for this API key
     await redis.del(`config:${id}`);
 
     return res.json({ success: true });
   } catch (error: any) {
     console.error('Error revoking API key:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_SERVER_ERROR',
+    });
   }
-});
-
-export default router;
+};
