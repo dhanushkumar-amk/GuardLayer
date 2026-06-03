@@ -120,6 +120,23 @@ services:
       redis:
         condition: service_healthy
 
+  output-guard:
+    build:
+      context: ./services/output-guard
+      dockerfile: Dockerfile
+    container_name: guardlayer-output-guard
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      PORT: 8002
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT}
+      LITELLM_MODEL: gpt-3.5-turbo
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
