@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -32,6 +30,22 @@ services:
       timeout: 5s
       retries: 5
       start_period: 3s
+
+  db-migrations:
+    build:
+      context: ./services/db-migrations
+      dockerfile: Dockerfile
+    container_name: guardlayer-db-migrations
+    restart: on-failure
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
