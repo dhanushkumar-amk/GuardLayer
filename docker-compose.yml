@@ -137,6 +137,17 @@ services:
       redis:
         condition: service_healthy
 
+  llm-proxy:
+    build:
+      context: ./services/llm-proxy
+      dockerfile: Dockerfile
+    container_name: guardlayer-llm-proxy
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      PORT: 8003
+
 volumes:
   postgres_data:
     driver: local

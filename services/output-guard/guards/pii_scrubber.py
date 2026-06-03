@@ -40,6 +40,18 @@ password_recognizer = PatternRecognizer(
     patterns=[password_pattern]
 )
 
+# 4. Custom Recognizer for Phone Numbers
+phone_pattern = Pattern(
+    name="phone_pattern",
+    regex=r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
+    score=0.85
+)
+
+phone_recognizer = PatternRecognizer(
+    supported_entity="PHONE_NUMBER",
+    patterns=[phone_pattern]
+)
+
 # Initialize engines
 try:
     analyzer = AnalyzerEngine()
@@ -53,6 +65,7 @@ except Exception:
 analyzer.registry.add_recognizer(aadhaar_recognizer)
 analyzer.registry.add_recognizer(api_key_recognizer)
 analyzer.registry.add_recognizer(password_recognizer)
+analyzer.registry.add_recognizer(phone_recognizer)
 
 anonymizer = AnonymizerEngine()
 
