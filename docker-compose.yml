@@ -103,6 +103,23 @@ services:
       config-service:
         condition: service_healthy
 
+  input-guard:
+    build:
+      context: ./services/input-guard
+      dockerfile: Dockerfile
+    container_name: guardlayer-input-guard
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT}
+      LITELLM_MODEL: gpt-3.5-turbo
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
