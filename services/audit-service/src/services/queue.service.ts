@@ -62,4 +62,3 @@ export class QueueService {
     }
   }
 }
-export { QueueService };

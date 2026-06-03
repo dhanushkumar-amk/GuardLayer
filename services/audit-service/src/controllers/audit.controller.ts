@@ -27,7 +27,7 @@ export async function getAuditLogs(req: Request, res: Response): Promise<void> {
 
     if (was_blocked !== undefined) {
       conditions.push(`was_blocked = $${conditions.length + 1}`);
-      values.push(was_blocked === 'true' || was_blocked === true);
+      values.push(was_blocked === 'true' || was_blocked === '1');
     }
 
     if (from_date) {

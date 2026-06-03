@@ -1,4 +1,33 @@
+import fs from 'fs';
+import path from 'path';
 import Redis from 'ioredis';
+
+function loadEnv() {
+  let dir = __dirname;
+  while (dir && dir !== path.parse(dir).root) {
+    const envPath = path.join(dir, '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf-8');
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#')) {
+          const idx = trimmed.indexOf('=');
+          if (idx !== -1) {
+            const key = trimmed.substring(0, idx).trim();
+            const val = trimmed.substring(idx + 1).trim();
+            if (!process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+      }
+      break;
+    }
+    dir = path.dirname(dir);
+  }
+}
+
+loadEnv();
 
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
