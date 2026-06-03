@@ -1,0 +1,18 @@
+# Security and local configuration
+.env
+
+# Dependencies
+node_modules/
+
+# Python caching
+__pycache__/
+*.pyc
+
+# OS-specific files
+.DS_Store
+
+# Logs
+*.log
+
+# Build/distribution directories
+dist/

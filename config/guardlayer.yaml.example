@@ -1,0 +1,46 @@
+# GuardLayer Configuration Example
+# Self-hostable LLM Security Gateway Config
+
+guardlayer:
+  port: 8080
+  host: "0.0.0.0"
+  env: "development"
+  log_level: "info"
+  api_key: "default-secret-admin-key"
+
+providers:
+  openai:
+    api_key: "your-openai-api-key"
+    base_url: "https://api.openai.com/v1"
+  anthropic:
+    api_key: "your-anthropic-api-key"
+    base_url: "https://api.anthropic.com/v1"
+
+guards:
+  input:
+    pii_detector:
+      enabled: true
+      confidence_threshold: 0.85
+      redact: true
+    prompt_injection:
+      enabled: true
+      action: "block" # block, tag, or bypass
+  output:
+    secrets_detector:
+      enabled: true
+      action: "redact"
+    toxic_content:
+      enabled: false
+
+storage:
+  postgres:
+    host: "localhost"
+    port: 5432
+    user: "guardlayer_admin"
+    password: "guardlayer_dev_password_change_me"
+    database: "guardlayer"
+    ssl_mode: "disable"
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
