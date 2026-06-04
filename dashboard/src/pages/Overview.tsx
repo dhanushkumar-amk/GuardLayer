@@ -384,7 +384,7 @@ export const Overview: React.FC = () => {
                           <td className="py-2.5 font-sans font-bold text-white capitalize">{(threat as any).threat_type || threat.classification || 'Unknown'}</td>
                           <td className="py-2.5 text-center font-mono">
                             <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded font-bold">
-                              {(threat as any).threat_score ? (threat as any).threat_score.toFixed(2) : '1.00'}
+                              {(threat as any).threat_score ? Number((threat as any).threat_score).toFixed(2) : '1.00'}
                             </span>
                           </td>
                           <td className="py-2.5 text-right text-gray-500 font-medium">

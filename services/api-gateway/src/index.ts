@@ -1,11 +1,88 @@
 import express from 'express';
+import axios from 'axios';
 import authRouter from './routes/auth.routes';
 import proxyRouter from './routes/proxy.routes';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+const CONFIG_SERVICE_URL = process.env.CONFIG_SERVICE_URL || 'http://config-service:3001';
+const AUDIT_SERVICE_URL = process.env.AUDIT_SERVICE_URL || 'http://audit-service:8004';
+
 app.use(express.json());
+
+// Custom CORS middleware
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Proxy /api/auth/login to internal /auth/login
+app.post('/api/auth/login', async (req, res, next) => {
+  try {
+    const response = await axios.post(`http://localhost:${PORT}/auth/login`, req.body);
+    return res.status(response.status).json(response.data);
+  } catch (err: any) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
+    }
+    return next(err);
+  }
+});
+
+// Proxy /api/keys and /api/config to config-service
+app.use(['/api/keys', '/api/config'], async (req, res, next) => {
+  // Strip trailing slashes or sanitize
+  const cleanUrl = req.originalUrl;
+  const targetUrl = `${CONFIG_SERVICE_URL}${cleanUrl}`;
+  try {
+    const headers: any = {};
+    if (req.headers.authorization) {
+      headers.authorization = req.headers.authorization;
+    }
+    const response = await axios({
+      method: req.method,
+      url: targetUrl,
+      data: req.body,
+      headers
+    });
+    return res.status(response.status).json(response.data);
+  } catch (err: any) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
+    }
+    return next(err);
+  }
+});
+
+// Proxy /api/audit, /api/threats, and /api/analytics to audit-service
+app.use(['/api/audit', '/api/threats', '/api/analytics'], async (req, res, next) => {
+  const cleanUrl = req.originalUrl;
+  const targetUrl = `${AUDIT_SERVICE_URL}${cleanUrl}`;
+  try {
+    const headers: any = {};
+    if (req.headers.authorization) {
+      headers.authorization = req.headers.authorization;
+    }
+    const response = await axios({
+      method: req.method,
+      url: targetUrl,
+      data: req.body,
+      headers
+    });
+    return res.status(response.status).json(response.data);
+  } catch (err: any) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
+    }
+    return next(err);
+  }
+});
 
 // Register API Routes
 app.use('/auth', authRouter);

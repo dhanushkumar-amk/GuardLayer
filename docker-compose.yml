@@ -213,10 +213,6 @@ services:
     depends_on:
       config-service:
         condition: service_healthy
-      input-guard:
-        condition: service_healthy
-      output-guard:
-        condition: service_healthy
       llm-proxy:
         condition: service_healthy
       audit-service:

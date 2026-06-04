@@ -2,11 +2,8 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install build tools for native modules (bcrypt)
-RUN apk add --no-cache python3 make g++ gcc
-
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -16,14 +13,11 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install runtime dependencies only (production install)
-RUN apk add --no-cache python3 make g++ gcc
-
 COPY package*.json ./
-RUN npm install --omit=dev && apk del python3 make g++ gcc
+RUN npm install --omit=dev --legacy-peer-deps
 
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3001
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]
