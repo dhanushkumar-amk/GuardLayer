@@ -13,6 +13,7 @@ import Config from '../pages/Config';
 import Analytics from '../pages/Analytics';
 import Settings from '../pages/Settings';
 import Login from '../pages/Login';
+import Register from '../pages/Register';
 import Landing from '../pages/Landing';
 
 const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -39,6 +40,14 @@ export const routes: RouteObject[] = [
     element: (
       <PublicGuard>
         <Login />
+      </PublicGuard>
+    ),
+  },
+  {
+    path: ROUTES.REGISTER,
+    element: (
+      <PublicGuard>
+        <Register />
       </PublicGuard>
     ),
   },

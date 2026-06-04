@@ -217,6 +217,10 @@ export const authApi = {
     const response = await api.post('/api/auth/login', { email, password });
     return response.data;
   },
+  register: async (email: string, password: string): Promise<any> => {
+    const response = await api.post('/api/auth/register', { email, password });
+    return response.data;
+  },
 };
 
 // Threat Log endpoints

@@ -35,6 +35,19 @@ app.post('/api/auth/login', async (req, res, next) => {
   }
 });
 
+// Proxy /api/auth/register to internal /auth/register
+app.post('/api/auth/register', async (req, res, next) => {
+  try {
+    const response = await axios.post(`http://localhost:${PORT}/auth/register`, req.body);
+    return res.status(response.status).json(response.data);
+  } catch (err: any) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
+    }
+    return next(err);
+  }
+});
+
 // Proxy /api/keys and /api/config to config-service
 app.use(['/api/keys', '/api/config'], async (req, res, next) => {
   // Strip trailing slashes or sanitize
