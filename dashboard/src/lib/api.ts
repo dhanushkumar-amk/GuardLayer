@@ -60,12 +60,16 @@ export const threatsApi = {
     const response = await api.get('/api/threats');
     return response.data;
   },
+  getRecentThreats: async (): Promise<ThreatLog[]> => {
+    const response = await api.get('/api/threats/recent');
+    return response.data;
+  },
 };
 
 // Audit Log endpoints
 export const auditApi = {
-  getAuditLogs: async (): Promise<AuditLog[]> => {
-    const response = await api.get('/api/audit');
+  getAuditLogs: async (limit?: number): Promise<{ data: AuditLog[] }> => {
+    const response = await api.get('/api/audit', { params: { limit } });
     return response.data;
   },
 };
@@ -101,6 +105,10 @@ export const configApi = {
 export const analyticsApi = {
   getAnalytics: async (): Promise<Analytics> => {
     const response = await api.get('/api/analytics');
+    return response.data;
+  },
+  getAnalyticsSummary: async (period?: string): Promise<any> => {
+    const response = await api.get('/api/analytics/summary', { params: { period } });
     return response.data;
   },
 };
