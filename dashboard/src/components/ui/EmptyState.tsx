@@ -19,14 +19,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLoading = false,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto">
+    <div className="flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto font-sans">
       {icon && (
-        <div className="text-gray-400 mb-4 bg-gray-50 p-3 rounded-full border border-gray-100 flex items-center justify-center">
+        <div className="text-gray-400 dark:text-slate-500 mb-4 bg-gray-50 dark:bg-[#080710]/60 p-3 rounded-full border border-gray-100 dark:border-[#1d1c26]/60 flex items-center justify-center">
           {icon}
         </div>
       )}
-      <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 mb-6">{description}</p>
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{description}</p>
       {actionText && onAction && (
         <Button variant="secondary" size="sm" onClick={onAction} isLoading={actionLoading}>
           {actionText}
