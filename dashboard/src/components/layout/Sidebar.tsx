@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '../../lib/constants';
+import { useNotificationsStore } from '../../store/notifications.store';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface SidebarSection {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const hasNewThreat = useNotificationsStore((state) => state.hasNewThreat);
   const sections: SidebarSection[] = [
     {
       title: 'Security',
@@ -146,7 +148,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 {({ isActive }) => (
                   <>
                     {getItemIcon(item.name, isActive)}
-                    <span>{item.name}</span>
+                    <span className="flex-grow">{item.name}</span>
+                    {item.name === 'Threats' && hasNewThreat && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff5a1f] animate-pulse shadow-sm shadow-[#ff5a1f]" />
+                    )}
                   </>
                 )}
               </NavLink>

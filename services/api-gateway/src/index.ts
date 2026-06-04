@@ -60,6 +60,33 @@ app.use(['/api/keys', '/api/config'], async (req, res, next) => {
   }
 });
 
+// Specific proxy for the threats SSE stream to handle chunked responses in real-time
+app.get('/api/threats/stream', async (req, res, next) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  try {
+    const targetUrl = `${AUDIT_SERVICE_URL}/api/threats/stream`;
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      responseType: 'stream'
+    });
+
+    response.data.pipe(res);
+
+    req.on('close', () => {
+      response.data.destroy();
+    });
+  } catch (err: any) {
+    console.error('SSE Proxy Error:', err.message);
+    res.end();
+  }
+});
+
 // Proxy /api/audit, /api/threats, and /api/analytics to audit-service
 app.use(['/api/audit', '/api/threats', '/api/analytics'], async (req, res, next) => {
   const cleanUrl = req.originalUrl;

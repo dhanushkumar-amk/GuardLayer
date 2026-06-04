@@ -82,3 +82,39 @@ export async function getRecentThreats(req: Request, res: Response): Promise<voi
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }
+
+// Global array of SSE clients
+export const sseClients: Response[] = [];
+
+/**
+ * Controller to handle SSE stream connections for real-time threat alerts.
+ */
+export function streamThreatLogs(req: Request, res: Response): void {
+  // Write headers immediately to flush connection through gateway proxy
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  // Send initial message to establish connection immediately
+  res.write('data: {"status":"connected"}\n\n');
+
+  // Keep-alive heartbeat every 10 seconds to prevent browser/proxy timeout
+  const keepAlive = setInterval(() => {
+    res.write(': keep-alive\n\n');
+  }, 10000);
+
+  // Add the client response to the array
+  sseClients.push(res);
+
+  // Handle client disconnection
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    const index = sseClients.indexOf(res);
+    if (index !== -1) {
+      sseClients.splice(index, 1);
+    }
+  });
+}
