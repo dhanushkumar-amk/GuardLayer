@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
   };
 
   return (
-    <nav className="w-full h-14 bg-white dark:bg-[#0d0d11] border-b border-gray-200 dark:border-[#17171e]/60 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 transition-colors z-30 select-none">
+    <nav className="w-full h-14 bg-gradient-to-r from-[#0d0d11] via-[#09090c] to-[#0d0d11] border-b border-[#17171e] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 transition-colors z-30 select-none shadow-md shadow-black/10">
       
       {/* Left section: Hamburger (Mobile) / Brand (Mobile) / Breadcrumb (Desktop) */}
       <div className="flex items-center gap-3">
@@ -79,54 +79,45 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
           <span>GuardLayer</span>
         </NavLink>
 
-        {/* Desktop Breadcrumbs */}
-        <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
-          <span>workspace</span>
-          <span className="text-gray-300 dark:text-[#17171e]">/</span>
-          <span className="text-gray-900 dark:text-[#f7f8f8]">{getBreadcrumbName()}</span>
+        {/* Desktop Status and Breadcrumbs */}
+        <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-emerald-950/30 border border-emerald-900/40 px-2.5 py-1 rounded-md text-[9px] font-mono text-emerald-400 font-bold uppercase select-none tracking-wider shadow-sm shadow-emerald-950/20">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            </span>
+            System Live
+          </div>
+          
+          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <span>workspace</span>
+            <span className="text-[#17171e]">/</span>
+            <span className="text-slate-300 font-bold">{getBreadcrumbName()}</span>
+          </div>
         </div>
       </div>
 
-      {/* Right section: Theme Toggle, User Details & Logout */}
-      <div className="flex items-center gap-2 sm:gap-4">
-        {/* Theme Toggle Button */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white bg-gray-50 dark:bg-[#15151c] hover:bg-gray-100 dark:hover:bg-[#1f1f2a] border border-gray-200 dark:border-[#17171e] transition-all focus:outline-none"
-          aria-label="Toggle theme"
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          {theme === 'dark' ? (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"
-              />
-            </svg>
-          ) : (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-              />
-            </svg>
-          )}
-        </button>
-
+      {/* Right section: Profile badge and Logout */}
+      <div className="flex items-center gap-3">
         {user && (
-          <span className="hidden sm:inline text-xs font-semibold text-gray-500 dark:text-slate-400">
-            {user.email}
-          </span>
+          <div className="hidden sm:flex items-center gap-2 bg-[#121217]/50 border border-[#17171e] hover:border-[#ff5a1f]/10 px-2.5 py-1 rounded-full transition-all">
+            <div className="w-5.5 h-5.5 rounded-full bg-gradient-to-tr from-orange-600 to-[#ff5a1f] flex items-center justify-center text-white text-[9px] font-black uppercase shadow-inner">
+              {user.email.slice(0, 2)}
+            </div>
+            <span className="text-[11px] font-bold text-slate-400 tracking-tight pr-1">
+              {user.email}
+            </span>
+          </div>
         )}
         
         <button
           onClick={logout}
-          className="text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white bg-gray-50 dark:bg-[#15151c] hover:bg-gray-100 dark:hover:bg-[#1f1f2a] border border-gray-200 dark:border-[#17171e] px-2.5 py-1.5 rounded-md transition-colors"
+          className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white bg-[#15151c] hover:bg-[#1f1f2a] border border-[#17171e] hover:border-[#ff5a1f]/30 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-sm hover:shadow-orange-500/5 active:scale-95"
         >
-          Logout
+          <svg className="h-3.5 w-3.5 text-slate-500 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Logout</span>
         </button>
       </div>
 

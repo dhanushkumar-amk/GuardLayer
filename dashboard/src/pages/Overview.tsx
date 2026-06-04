@@ -94,8 +94,8 @@ export const Overview: React.FC = () => {
   const renderSkeletons = () => (
     <div className="space-y-6 font-sans select-none animate-pulse">
       {/* Stat Cards Skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, idx) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, idx) => (
           <div key={idx} className="h-24 bg-[#0d0d11]/80 border border-[#17171e] rounded-2xl p-4 flex flex-col justify-between">
             <div className="h-3 w-20 bg-gray-800 rounded" />
             <div className="h-6 w-16 bg-gray-800 rounded" />
@@ -110,9 +110,10 @@ export const Overview: React.FC = () => {
       </div>
 
       {/* Lists Grid Skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-64 bg-[#0d0d11]/80 border border-[#17171e] rounded-2xl p-4" />
-        <div className="h-64 bg-[#0d0d11]/80 border border-[#17171e] rounded-2xl p-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="h-72 bg-[#0d0d11]/80 border border-[#17171e] rounded-2xl p-4" />
+        <div className="h-72 bg-[#0d0d11]/80 border border-[#17171e] rounded-2xl p-4" />
+        <div className="h-72 bg-[#0d0d11]/80 border border-[#17171e] rounded-2xl p-4" />
       </div>
     </div>
   );
@@ -258,8 +259,8 @@ export const Overview: React.FC = () => {
       ) : (
         <div className="space-y-6 font-sans">
           
-          {/* 4 Stat Cards in a row at top */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 5 Stat Cards in a row at top */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             
             {/* Stat 1: Total Requests */}
             <div className="bg-[#0d0d11]/60 border border-[#17171e]/80 hover:border-[#ff5a1f]/20 rounded-2xl p-5 flex flex-col justify-between h-24 transition-all duration-300">
@@ -285,7 +286,15 @@ export const Overview: React.FC = () => {
               </div>
             </div>
 
-            {/* Stat 4: Threat Level */}
+            {/* Stat 4: Average Latency */}
+            <div className="bg-[#0d0d11]/60 border border-[#17171e]/80 hover:border-[#ff5a1f]/20 rounded-2xl p-5 flex flex-col justify-between h-24 transition-all duration-300">
+              <span className="text-xs text-gray-400 font-medium">Average Latency</span>
+              <div className="text-2xl font-extrabold text-white tracking-tight">
+                {summaryData.average_latency_ms ? `${summaryData.average_latency_ms.toFixed(0)} ms` : '0 ms'}
+              </div>
+            </div>
+
+            {/* Stat 5: Threat Level */}
             <div className="bg-[#0d0d11]/60 border border-[#17171e]/80 hover:border-[#ff5a1f]/20 rounded-2xl p-5 flex flex-col justify-between h-24 transition-all duration-300">
               <span className="text-xs text-gray-400 font-medium">Dynamic Threat Rating</span>
               <div className="flex items-center justify-between">
@@ -357,7 +366,7 @@ export const Overview: React.FC = () => {
           </div>
 
           {/* Bottom lists row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Recent Threats Table */}
             <div className="bg-[#0d0d11]/60 border border-[#17171e]/80 rounded-2xl p-5 flex flex-col justify-between min-h-[300px]">
@@ -442,6 +451,76 @@ export const Overview: React.FC = () => {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </div>
+
+            {/* Active Guardrails Card */}
+            <div className="bg-[#0d0d11]/60 border border-[#17171e]/80 rounded-2xl p-5 flex flex-col justify-between min-h-[300px]">
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-tight mb-0.5">Active Security Guardrails</h3>
+                <p className="text-[10px] text-gray-500 font-mono mb-4 uppercase">Real-Time Protection Status</p>
+              </div>
+
+              <div className="flex-1 space-y-3.5 overflow-y-auto pr-1">
+                {[
+                  {
+                    name: 'Prompt Injection Shield',
+                    desc: 'Blocks adversarial attempts to override instructions.',
+                    triggers: summaryData.threats_by_type?.['prompt_injection'] || 0,
+                    status: 'ENFORCING',
+                    statusColor: 'text-[#ff5a1f] bg-[#ff5a1f]/10 border-[#ff5a1f]/20'
+                  },
+                  {
+                    name: 'Jailbreak Interceptor',
+                    desc: 'Detects semantic jailbreaking and roleplay exploits.',
+                    triggers: summaryData.threats_by_type?.['jailbreak'] || 0,
+                    status: 'ENFORCING',
+                    statusColor: 'text-[#ff5a1f] bg-[#ff5a1f]/10 border-[#ff5a1f]/20'
+                  },
+                  {
+                    name: 'PII Scrubbing Guard',
+                    desc: 'Scrubs passwords, credit cards, and emails.',
+                    triggers: summaryData.pii_detections_count || 0,
+                    status: 'ENFORCING',
+                    statusColor: 'text-[#ff5a1f] bg-[#ff5a1f]/10 border-[#ff5a1f]/20'
+                  },
+                  {
+                    name: 'Toxicity Filter',
+                    desc: 'Filters hate speech, threats, and abuse.',
+                    triggers: summaryData.threats_by_type?.['toxicity'] || 0,
+                    status: 'ENFORCING',
+                    statusColor: 'text-[#ff5a1f] bg-[#ff5a1f]/10 border-[#ff5a1f]/20'
+                  },
+                  {
+                    name: 'System Instruction Bypass',
+                    desc: 'Blocks prompts seeking system instructions.',
+                    triggers: summaryData.threats_by_type?.['system_bypass'] || 0,
+                    status: 'MONITORING',
+                    statusColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+                  }
+                ].map((guard, i) => (
+                  <div key={i} className="flex flex-col gap-1 border-b border-[#17171e]/40 pb-2.5 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${guard.status === 'ENFORCING' ? 'bg-[#ff5a1f]' : 'bg-blue-400'}`}></span>
+                            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${guard.status === 'ENFORCING' ? 'bg-[#ff5a1f]' : 'bg-blue-400'}`}></span>
+                          </span>
+                          {guard.name}
+                        </h4>
+                        <p className="text-[9px] text-gray-500 leading-tight mt-0.5">{guard.desc}</p>
+                      </div>
+                      <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 border rounded-full shrink-0 ${guard.statusColor}`}>
+                        {guard.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] font-mono text-gray-400 mt-1">
+                      <span>Violations Intercepted</span>
+                      <span className="font-bold text-white">{guard.triggers}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

@@ -21,7 +21,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         
         {/* Main Content Pane */}
         <main className="flex-1 overflow-y-auto py-6 px-6 sm:px-8">
-          <div className="max-w-5xl">
+          <div className="w-full max-w-[1600px] mx-auto">
             {children}
           </div>
         </main>
