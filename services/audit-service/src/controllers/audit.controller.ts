@@ -6,14 +6,14 @@ import pool from '../db/postgres';
  */
 export async function getAuditLogs(req: Request, res: Response): Promise<void> {
   try {
-    const { api_key_id, page, limit, from_date, to_date, was_blocked } = req.query;
+    const { api_key_id, page, limit, from_date, to_date, was_blocked, search, llm_provider } = req.query;
 
     let pageNum = parseInt(page as string, 10) || 1;
     let limitNum = parseInt(limit as string, 10) || 50;
 
     // Constraints
     if (limitNum > 100) limitNum = 100;
-    if (limitNum < 1) limitNum = 50;
+    if (limitNum < 1) limitNum = 25; // Default to 25 page size per specifications
     if (pageNum < 1) pageNum = 1;
 
     const offset = (pageNum - 1) * limitNum;
@@ -25,9 +25,19 @@ export async function getAuditLogs(req: Request, res: Response): Promise<void> {
       values.push(api_key_id);
     }
 
-    if (was_blocked !== undefined) {
+    if (was_blocked !== undefined && was_blocked !== '') {
       conditions.push(`was_blocked = $${conditions.length + 1}`);
       values.push(was_blocked === 'true' || was_blocked === '1');
+    }
+
+    if (llm_provider) {
+      conditions.push(`llm_provider = $${conditions.length + 1}`);
+      values.push(llm_provider);
+    }
+
+    if (search) {
+      conditions.push(`(request_id ILIKE $${conditions.length + 1} OR original_input ILIKE $${conditions.length + 1})`);
+      values.push(`%${search}%`);
     }
 
     if (from_date) {

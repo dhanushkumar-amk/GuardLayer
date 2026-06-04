@@ -68,8 +68,21 @@ export const threatsApi = {
 
 // Audit Log endpoints
 export const auditApi = {
-  getAuditLogs: async (limit?: number): Promise<{ data: AuditLog[] }> => {
-    const response = await api.get('/api/audit', { params: { limit } });
+  getAuditLogs: async (params?: {
+    api_key_id?: string;
+    was_blocked?: boolean | string;
+    from_date?: string;
+    to_date?: string;
+    llm_provider?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: AuditLog[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
+    const response = await api.get('/api/audit', { params });
+    return response.data;
+  },
+  getAuditLogById: async (requestId: string): Promise<AuditLog> => {
+    const response = await api.get(`/api/audit/${requestId}`);
     return response.data;
   },
 };
