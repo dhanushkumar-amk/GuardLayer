@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db/postgres';
+import { formatCSVCell } from './audit.controller';
 
 /**
  * Retrieves paginated threat logs with optional filters.
@@ -128,5 +129,98 @@ export async function clearThreatLogs(req: Request, res: Response): Promise<void
     res.json({ success: true, message: 'All threat logs have been successfully cleared' });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+}
+
+/**
+ * Streams threat logs filtered by query parameters as a CSV download.
+ */
+export async function exportThreatLogs(req: Request, res: Response): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const { api_key_id, threat_type, from_date, to_date } = req.query;
+
+    const conditions: string[] = [];
+    const values: any[] = [];
+
+    if (api_key_id) {
+      conditions.push(`api_key_id = $${conditions.length + 1}`);
+      values.push(api_key_id);
+    }
+
+    if (threat_type) {
+      conditions.push(`threat_type = $${conditions.length + 1}`);
+      values.push(threat_type);
+    }
+
+    if (from_date) {
+      conditions.push(`detected_at >= $${conditions.length + 1}`);
+      values.push(new Date(from_date as string));
+    }
+
+    if (to_date) {
+      conditions.push(`detected_at <= $${conditions.length + 1}`);
+      values.push(new Date(to_date as string));
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    await client.query('BEGIN');
+    
+    const cursorName = `threat_cursor_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const declareQuery = `DECLARE ${cursorName} CURSOR FOR SELECT * FROM threat_logs ${whereClause} ORDER BY detected_at DESC`;
+    await client.query(declareQuery, values);
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="guardlayer-threats-${dateStr}.csv"`);
+
+    const headers = [
+      'Threat ID', 'API Key', 'Threat Type', 'Score', 'Guard Name', 'Original Input', 'Detected At'
+    ];
+    res.write('\ufeff' + headers.map(formatCSVCell).join(',') + '\n');
+
+    let hasMore = true;
+    while (hasMore) {
+      const fetchResult = await client.query(`FETCH 100 FROM ${cursorName}`);
+      if (fetchResult.rows.length === 0) {
+        hasMore = false;
+      } else {
+        for (const row of fetchResult.rows) {
+          const line = [
+            formatCSVCell(row.id),
+            formatCSVCell(row.api_key_id),
+            formatCSVCell(row.threat_type),
+            formatCSVCell(row.threat_score),
+            formatCSVCell(row.guard_name),
+            formatCSVCell(row.original_input),
+            formatCSVCell(row.detected_at)
+          ].join(',') + '\n';
+
+          const ok = res.write(line);
+          if (!ok) {
+            await new Promise((resolve) => res.once('drain', resolve));
+          }
+        }
+      }
+    }
+
+    await client.query(`CLOSE ${cursorName}`);
+    await client.query('COMMIT');
+    res.end();
+  } catch (error: any) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rbErr) {
+      // ignore rollback errors if connection was broken
+    }
+    console.error('Export Threat Logs Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    } else {
+      res.end();
+    }
+  } finally {
+    client.release();
   }
 }

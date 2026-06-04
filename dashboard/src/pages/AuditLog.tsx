@@ -6,6 +6,7 @@ import { auditApi } from '../lib/api';
 import useSSE from '../hooks/useSSE';
 import LiveIndicator from '../components/ui/LiveIndicator';
 import type { AuditLog as AuditLogType } from '../types';
+import { ExportPopover } from '../components/ui/ExportPopover';
 
 export const AuditLog: React.FC = () => {
   const { status, lastAuditEvent } = useSSE();
@@ -31,6 +32,22 @@ export const AuditLog: React.FC = () => {
 
   // Auto Refresh State (Refreshes every 30s if on)
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+
+  // Export Popover & Toast State
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [exportWasBlocked, setExportWasBlocked] = useState<string>('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    setExportWasBlocked(wasBlocked);
+  }, [wasBlocked]);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Drawer / Side Panel State
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -200,35 +217,29 @@ export const AuditLog: React.FC = () => {
     setPage(1);
   };
 
-  // Export logs to CSV file
-  const handleExportCSV = () => {
-    if (logs.length === 0) return;
-
-    const headers = ['Request ID', 'API Key ID', 'Timestamp', 'Latency (ms)', 'Status', 'LLM Provider', 'LLM Model', 'Blocked Reason'];
-    const rows = logs.map((log) => [
-      log.id,
-      log.api_key_id || 'unknown',
-      log.timestamp || (log as any).created_at || '',
-      log.latency_ms || 0,
-      log.was_blocked || (log as any).was_blocked ? 'BLOCKED' : 'ALLOWED',
-      log.llm_provider || 'N/A',
-      log.llm_model || 'N/A',
-      log.block_reason || 'N/A',
-    ]);
-
-    const csvContent = [
-      headers.map((h) => `"${h}"`).join(','),
-      ...rows.map((r) => r.map((val) => `"${val}"`).join(',')),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `guardlayer_audit_log_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Export logs to CSV file by calling the streaming backend
+  const handleDownloadCSV = async (filters: any) => {
+    try {
+      const blob = await auditApi.exportAuditLogs({
+        api_key_id: filters.api_key_id || undefined,
+        was_blocked: filters.was_blocked === '' ? undefined : filters.was_blocked,
+        from_date: filters.from_date || undefined,
+        to_date: filters.to_date || undefined,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.download = `guardlayer-audit-${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Audit export failed:', err);
+      setToast({ message: 'Export failed', type: 'error' });
+      throw err;
+    }
   };
 
   const formatTime = (isoString?: string) => {
@@ -404,16 +415,53 @@ export const AuditLog: React.FC = () => {
                 </button>
               )}
               
-              <button
-                onClick={handleExportCSV}
-                disabled={logs.length === 0}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white bg-[#15151c] hover:bg-[#1f1f2a] border border-[#17171e] hover:border-[#ff5a1f]/20 disabled:opacity-40 disabled:pointer-events-none rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
-              >
-                <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span>CSV</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsExportOpen(true)}
+                  disabled={logs.length === 0}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white bg-[#15151c] hover:bg-[#1f1f2a] border border-[#17171e] hover:border-[#ff5a1f]/20 disabled:opacity-40 disabled:pointer-events-none rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
+                >
+                  <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>Export CSV</span>
+                </button>
+                <ExportPopover
+                  isOpen={isExportOpen}
+                  onClose={() => setIsExportOpen(false)}
+                  onDownload={handleDownloadCSV}
+                  initialFilters={{
+                    from_date: fromDate,
+                    to_date: toDate,
+                    api_key_id: apiKeyId,
+                    was_blocked: exportWasBlocked,
+                  }}
+                  extraFilters={
+                    <div className="space-y-1">
+                      <label htmlFor="export-was-blocked" className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 block">
+                        Outcome Filter
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="export-was-blocked"
+                          value={exportWasBlocked}
+                          onChange={(e) => setExportWasBlocked(e.target.value)}
+                          className="w-full bg-[#121217] border border-[#17171e] rounded-lg px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-[#ff5a1f] appearance-none cursor-pointer pr-8"
+                        >
+                          <option value="">All Outcomes</option>
+                          <option value="true">Blocked Only</option>
+                          <option value="false">Allowed Only</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+              </div>
             </div>
 
           </div>
@@ -805,6 +853,24 @@ export const AuditLog: React.FC = () => {
 
           </div>
         </>
+      )}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl animate-slideIn ${
+          toast.type === 'success'
+            ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20'
+            : 'bg-[#ef4444]/10 text-[#ef4444] border-[#ef4444]/20'
+        }`}>
+          {toast.type === 'success' ? (
+            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <span className="text-xs font-bold font-mono uppercase tracking-wider">{toast.message}</span>
+        </div>
       )}
     </MainLayout>
   );

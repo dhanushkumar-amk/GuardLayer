@@ -3,6 +3,7 @@ import MainLayout from '../components/layout/MainLayout';
 import PageHeader from '../components/layout/PageHeader';
 import Card from '../components/ui/Card';
 import { threatsApi } from '../lib/api';
+import { ExportPopover } from '../components/ui/ExportPopover';
 import { useNotificationsStore } from '../store/notifications.store';
 import useSSE from '../hooks/useSSE';
 import LiveIndicator from '../components/ui/LiveIndicator';
@@ -32,6 +33,22 @@ export const Threats: React.FC = () => {
   const [expandedThreats, setExpandedThreats] = useState<Set<string>>(new Set());
   const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const [isCopiedId, setIsCopiedId] = useState<string | null>(null);
+
+  // Export Popover & Toast State
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [exportThreatType, setExportThreatType] = useState<string>('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    setExportThreatType(threatType);
+  }, [threatType]);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Clear badge on mount
   useEffect(() => {
@@ -141,34 +158,29 @@ export const Threats: React.FC = () => {
     setTimeout(() => setIsCopiedId(null), 1500);
   };
 
-  // Export CSV
-  const handleExportCSV = () => {
-    if (threats.length === 0) return;
-
-    const headers = ['ID', 'Threat Type', 'Score', 'API Key ID', 'Guard Name', 'Detected At', 'Payload'];
-    const rows = threats.map((t) => [
-      t.id,
-      (t as any).threat_type || t.classification || 'unknown',
-      (t as any).threat_score || 1.0,
-      (t as any).api_key_id || 'unknown',
-      (t as any).guard_name || 'unknown',
-      t.timestamp || (t as any).detected_at || '',
-      (t.requestText || (t as any).original_input || '').replace(/"/g, '""'),
-    ]);
-
-    const csvContent = [
-      headers.map((h) => `"${h}"`).join(','),
-      ...rows.map((r) => r.map((val) => `"${val}"`).join(',')),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `guardlayer_threats_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Export threats to CSV file by calling the streaming backend
+  const handleDownloadCSV = async (filters: any) => {
+    try {
+      const blob = await threatsApi.exportThreatLogs({
+        api_key_id: filters.api_key_id || undefined,
+        threat_type: filters.threat_type === '' ? undefined : filters.threat_type,
+        from_date: filters.from_date || undefined,
+        to_date: filters.to_date || undefined,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.download = `guardlayer-threats-${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Threat export failed:', err);
+      setToast({ message: 'Export failed', type: 'error' });
+      throw err;
+    }
   };
 
   // Format detected time
@@ -371,17 +383,56 @@ export const Threats: React.FC = () => {
                 Clear Filters
               </button>
             )}
-            <button
-              onClick={handleExportCSV}
-              disabled={threats.length === 0}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white bg-[#15151c] hover:bg-[#1f1f2a] border border-[#17171e] hover:border-[#ff5a1f]/20 disabled:opacity-40 disabled:pointer-events-none rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              <svg className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span>Export CSV</span>
-            </button>
-          </div>
+              <div className="relative">
+                <button
+                  onClick={() => setIsExportOpen(true)}
+                  disabled={threats.length === 0}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white bg-[#15151c] hover:bg-[#1f1f2a] border border-[#17171e] hover:border-[#ff5a1f]/20 disabled:opacity-40 disabled:pointer-events-none rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
+                >
+                  <svg className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>Export CSV</span>
+                </button>
+                <ExportPopover
+                  isOpen={isExportOpen}
+                  onClose={() => setIsExportOpen(false)}
+                  onDownload={handleDownloadCSV}
+                  initialFilters={{
+                    from_date: fromDate,
+                    to_date: toDate,
+                    api_key_id: apiKeyId,
+                    threat_type: exportThreatType,
+                  }}
+                  extraFilters={
+                    <div className="space-y-1">
+                      <label htmlFor="export-threat-type" className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 block">
+                        Threat Type
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="export-threat-type"
+                          value={exportThreatType}
+                          onChange={(e) => setExportThreatType(e.target.value)}
+                          className="w-full bg-[#121217] border border-[#17171e] rounded-lg px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:border-[#ff5a1f] appearance-none cursor-pointer pr-8"
+                        >
+                          <option value="">All Categories</option>
+                          <option value="prompt_injection">Prompt Injection</option>
+                          <option value="jailbreak">Jailbreak</option>
+                          <option value="pii">PII Detected</option>
+                          <option value="toxicity">Toxicity & Abuse</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+              </div>
+            </div>
 
         </div>
 
@@ -562,8 +613,26 @@ export const Threats: React.FC = () => {
             </div>
           )}
         </Card>
-
       </div>
+
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl animate-slideIn ${
+          toast.type === 'success'
+            ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20'
+            : 'bg-[#ef4444]/10 text-[#ef4444] border-[#ef4444]/20'
+        }`}>
+          {toast.type === 'success' ? (
+            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <span className="text-xs font-bold font-mono uppercase tracking-wider">{toast.message}</span>
+        </div>
+      )}
     </MainLayout>
   );
 };

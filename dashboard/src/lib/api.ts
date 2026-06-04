@@ -250,6 +250,69 @@ export const threatsApi = {
     const response = await api.get('/api/threats/recent');
     return response.data;
   },
+  exportThreatLogs: async (params?: {
+    api_key_id?: string;
+    threat_type?: string;
+    from_date?: string;
+    to_date?: string;
+  }): Promise<Blob> => {
+    if (isDemoMode()) {
+      const threats = getMockData('threats', defaultMockThreats);
+      const filtered = threats.filter(log => {
+        if (params?.api_key_id && log.api_key_id !== params.api_key_id) return false;
+        if (params?.threat_type && log.threat_type !== params.threat_type) return false;
+        if (params?.from_date) {
+          const logDate = new Date(log.detected_at || (log as any).timestamp);
+          if (logDate < new Date(params.from_date)) return false;
+        }
+        if (params?.to_date) {
+          const logDate = new Date(log.detected_at || (log as any).timestamp);
+          const filterDate = new Date(params.to_date);
+          filterDate.setHours(23, 59, 59, 999);
+          if (logDate > filterDate) return false;
+        }
+        return true;
+      });
+
+      const headers = [
+        'Threat ID', 'API Key', 'Threat Type', 'Score', 'Guard Name', 'Original Input', 'Detected At'
+      ];
+
+      const formatCSVCell = (val: any): string => {
+        if (val === null || val === undefined) return '""';
+        if (typeof val === 'boolean') return val ? '"true"' : '"false"';
+        if (val instanceof Date) return `"${val.toISOString().replace(/\.\d{3}/, '')}"`;
+        if (typeof val === 'object') {
+          const str = JSON.stringify(val);
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return `"${String(val).replace(/"/g, '""')}"`;
+      };
+
+      const rows = filtered.map(row => [
+        row.id,
+        row.api_key_id,
+        row.threat_type,
+        row.threat_score,
+        row.guard_name || '',
+        row.original_input,
+        row.detected_at || row.timestamp
+      ]);
+
+      const csvContent = '\ufeff' + [
+        headers.map(formatCSVCell).join(','),
+        ...rows.map(r => r.map(formatCSVCell).join(','))
+      ].join('\n');
+
+      return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    }
+
+    const response = await api.get('/api/threats/export', {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 };
 
 // Audit Log endpoints
@@ -285,6 +348,89 @@ export const auditApi = {
     const response = await api.get(`/api/audit/${requestId}`);
     return response.data;
   },
+  exportAuditLogs: async (params?: {
+    api_key_id?: string;
+    was_blocked?: boolean | string;
+    from_date?: string;
+    to_date?: string;
+  }): Promise<Blob> => {
+    if (isDemoMode()) {
+      const audits = getMockData('audits', defaultMockAudits);
+      const filtered = audits.filter(log => {
+        if (params?.api_key_id && log.api_key_id !== params.api_key_id) return false;
+        if (params?.was_blocked !== undefined && params.was_blocked !== '') {
+          const logBlocked = log.was_blocked || (log as any).was_blocked;
+          const filterBlocked = params.was_blocked === 'true';
+          if (!!logBlocked !== filterBlocked) return false;
+        }
+        if (params?.from_date) {
+          const logDate = new Date(log.timestamp || (log as any).created_at);
+          if (logDate < new Date(params.from_date)) return false;
+        }
+        if (params?.to_date) {
+          const logDate = new Date(log.timestamp || (log as any).created_at);
+          const filterDate = new Date(params.to_date);
+          filterDate.setHours(23, 59, 59, 999);
+          if (logDate > filterDate) return false;
+        }
+        return true;
+      });
+
+      const headers = [
+        'Request ID', 'API Key', 'Time', 'Original Input', 'Scrubbed Input',
+        'LLM Response', 'Was Blocked', 'Block Reason', 'Guards Triggered',
+        'Latency MS', 'Provider', 'Model'
+      ];
+      
+      const formatCSVCell = (val: any): string => {
+        if (val === null || val === undefined) return '""';
+        if (typeof val === 'boolean') return val ? '"true"' : '"false"';
+        if (val instanceof Date) return `"${val.toISOString().replace(/\.\d{3}/, '')}"`;
+        if (typeof val === 'object') {
+          const str = JSON.stringify(val);
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return `"${String(val).replace(/"/g, '""')}"`;
+      };
+
+      const rows = filtered.map(row => {
+        const inputGuards = row.input_guards_triggered || {};
+        const outputGuards = row.output_guards_triggered || {};
+        const triggered = [
+          ...Object.entries(inputGuards).filter(([, v]: any) => v.triggered || v.score > 0).map(([k]) => k),
+          ...Object.entries(outputGuards).filter(([, v]: any) => v.triggered || v.score > 0).map(([k]) => k)
+        ].join(', ');
+
+        return [
+          row.id,
+          row.api_key_id,
+          row.timestamp || (row as any).created_at,
+          row.original_input,
+          row.scrubbed_input,
+          row.llm_response,
+          row.was_blocked,
+          row.block_reason || '',
+          triggered,
+          row.latency_ms,
+          row.llm_provider,
+          row.llm_model
+        ];
+      });
+
+      const csvContent = '\ufeff' + [
+        headers.map(formatCSVCell).join(','),
+        ...rows.map(r => r.map(formatCSVCell).join(','))
+      ].join('\n');
+
+      return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    }
+
+    const response = await api.get('/api/audit/export', {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  }
 };
 
 // API Key endpoints

@@ -100,6 +100,37 @@ app.get('/api/threats/stream', async (req, res, next) => {
   }
 });
 
+// Proxy /api/audit/export and /api/threats/export as streams to audit-service
+app.get(['/api/audit/export', '/api/threats/export'], async (req, res, next) => {
+  const cleanUrl = req.originalUrl;
+  const targetUrl = `${AUDIT_SERVICE_URL}${cleanUrl}`;
+  try {
+    const headers: any = {};
+    if (req.headers.authorization) {
+      headers.authorization = req.headers.authorization;
+    }
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      headers,
+      responseType: 'stream'
+    });
+
+    res.setHeader('Content-Type', response.headers['content-type'] || 'text/csv');
+    if (response.headers['content-disposition']) {
+      res.setHeader('Content-Disposition', response.headers['content-disposition']);
+    }
+    response.data.pipe(res);
+  } catch (err: any) {
+    if (err.response) {
+      res.status(err.response.status);
+      err.response.data.pipe(res);
+      return;
+    }
+    return next(err);
+  }
+});
+
 // Proxy /api/audit, /api/threats, and /api/analytics to audit-service
 app.use(['/api/audit', '/api/threats', '/api/analytics'], async (req, res, next) => {
   const cleanUrl = req.originalUrl;

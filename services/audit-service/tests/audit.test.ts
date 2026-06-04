@@ -3,6 +3,7 @@ import { app, server, queueService } from '../src/index';
 import pool from '../src/db/postgres';
 import { LoggerService } from '../src/services/logger.service';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 const TEST_KEY_1 = '22222222-2222-2222-2222-222222222222';
 const TEST_KEY_2 = '33333333-3333-3333-3333-333333333333';
@@ -154,5 +155,32 @@ describe('Audit API Endpoints', () => {
     const res = await request(app).get('/api/audit?limit=150');
     expect(res.status).toBe(200);
     expect(res.body.pagination.limit).toBe(100);
+  });
+
+  it('should return 401 for audit export without authorization header', async () => {
+    const res = await request(app).get('/api/audit/export');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Missing authentication token');
+  });
+
+  it('should return 401 for audit export with invalid JWT token', async () => {
+    const res = await request(app)
+      .get('/api/audit/export')
+      .set('Authorization', 'Bearer invalid-token-sig');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Invalid or expired token');
+  });
+
+  it('should return 200 and stream CSV for audit export with valid JWT token', async () => {
+    const token = jwt.sign({ userId: 'test-admin' }, process.env.JWT_SECRET || 'guardlayer-default-jwt-secret-key');
+    const res = await request(app)
+      .get('/api/audit/export')
+      .set('Authorization', `Bearer ${token}`);
+    
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toContain('attachment; filename="guardlayer-audit-');
+    expect(res.text).toContain('Request ID');
+    expect(res.text).toContain('Original Input');
   });
 });
