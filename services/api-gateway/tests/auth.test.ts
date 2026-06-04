@@ -1,7 +1,7 @@
 import request from 'supertest';
 import app from '../src/index';
 import pool from '../src/db/postgres';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 jest.mock('../src/db/postgres', () => {
   return {

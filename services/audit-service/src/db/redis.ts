@@ -27,37 +27,54 @@ function loadEnv() {
   }
 }
 
+import EventEmitter from 'events';
+
 loadEnv();
 
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+let redisClient: any;
+let redisSubscriber: any;
 
-// Create general client (used for publishing in tests and potentially general commands)
-const redisClient = new Redis({
-  host: redisHost,
-  port: redisPort,
-  maxRetriesPerRequest: null,
-  retryStrategy(times) {
-    return Math.min(times * 100, 3000);
+if (process.env.NODE_ENV === 'test') {
+  class MockRedis extends EventEmitter {
+    status = 'ready';
+    subscribe = async () => {};
+    publish = async () => {};
+    quit = async () => {};
+    disconnect = async () => {};
   }
-});
+  redisClient = new MockRedis();
+  redisSubscriber = new MockRedis();
+} else {
+  const redisHost = process.env.REDIS_HOST || 'localhost';
+  const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
 
-// Create subscriber client
-const redisSubscriber = new Redis({
-  host: redisHost,
-  port: redisPort,
-  maxRetriesPerRequest: null,
-  retryStrategy(times) {
-    return Math.min(times * 100, 3000);
-  }
-});
+  // Create general client (used for publishing in tests and potentially general commands)
+  redisClient = new Redis({
+    host: redisHost,
+    port: redisPort,
+    maxRetriesPerRequest: null,
+    retryStrategy(times) {
+      return Math.min(times * 100, 3000);
+    }
+  });
 
-redisClient.on('error', (err) => {
-  console.error('Redis Client Error:', err);
-});
+  // Create subscriber client
+  redisSubscriber = new Redis({
+    host: redisHost,
+    port: redisPort,
+    maxRetriesPerRequest: null,
+    retryStrategy(times) {
+      return Math.min(times * 100, 3000);
+    }
+  });
 
-redisSubscriber.on('error', (err) => {
-  console.error('Redis Subscriber Error:', err);
-});
+  redisClient.on('error', (err: any) => {
+    console.error('Redis Client Error:', err);
+  });
+
+  redisSubscriber.on('error', (err: any) => {
+    console.error('Redis Subscriber Error:', err);
+  });
+}
 
 export { redisClient, redisSubscriber };

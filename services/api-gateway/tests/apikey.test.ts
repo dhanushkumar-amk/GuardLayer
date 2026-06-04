@@ -3,7 +3,7 @@ import app from '../src/index';
 import pool from '../src/db/postgres';
 import redis from '../src/db/redis';
 import { ConfigServiceClient } from '../src/services/config.service';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 jest.mock('../src/db/postgres', () => {
   return {

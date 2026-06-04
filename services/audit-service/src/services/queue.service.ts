@@ -16,7 +16,7 @@ export class QueueService {
       console.error('[Queue Service] Failed to subscribe to Redis channels:', err.message);
     }
 
-    redisSubscriber.on('message', async (channel, message) => {
+    redisSubscriber.on('message', async (channel: string, message: string) => {
       try {
         const payload = JSON.parse(message);
         if (channel === 'guardlayer:audit') {

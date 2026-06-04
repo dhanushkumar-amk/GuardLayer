@@ -116,9 +116,9 @@ app.get(['/api/audit/export', '/api/threats/export'], async (req, res, next) => 
       responseType: 'stream'
     });
 
-    res.setHeader('Content-Type', response.headers['content-type'] || 'text/csv');
+    res.setHeader('Content-Type', String(response.headers['content-type'] || 'text/csv'));
     if (response.headers['content-disposition']) {
-      res.setHeader('Content-Disposition', response.headers['content-disposition']);
+      res.setHeader('Content-Disposition', String(response.headers['content-disposition']));
     }
     response.data.pipe(res);
   } catch (err: any) {
