@@ -499,4 +499,84 @@ export const analyticsApi = {
   },
 };
 
+// Settings endpoints
+export const settingsApi = {
+  getProviders: async (): Promise<any> => {
+    const val = localStorage.getItem('guardlayer_providers');
+    if (val) return JSON.parse(val);
+
+    const defaultVal = {
+      primary: { provider: 'openai', model: 'gpt-3.5-turbo', apiKey: '••••••••••••••••' },
+      fallbacks: [
+        { provider: 'gemini', model: 'gemini-1.5-flash', apiKey: '••••••••••••••••' }
+      ]
+    };
+    localStorage.setItem('guardlayer_providers', JSON.stringify(defaultVal));
+    return defaultVal;
+  },
+  saveProviders: async (config: any): Promise<any> => {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 600));
+    localStorage.setItem('guardlayer_providers', JSON.stringify(config));
+    return { success: true };
+  },
+  testConnection: async (provider: string, model: string, apiKey: string): Promise<any> => {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error('API key is required to establish connection');
+    }
+    if (apiKey.toLowerCase().includes('fail') || model.toLowerCase().includes('fail')) {
+      throw new Error(`Failed to authenticate with ${provider} using model ${model}`);
+    }
+    return { success: true, message: `Successfully connected to ${provider} using model ${model}` };
+  },
+  updateEmail: async (newEmail: string, password: string): Promise<any> => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    if (password === 'error' || password === 'wrong') {
+      throw new Error('Incorrect current password');
+    }
+    const store = useAuthStore.getState();
+    if (store.user) {
+      store.setAuth(store.token || '', { ...store.user, email: newEmail });
+    }
+    return { success: true };
+  },
+  updatePassword: async (currentPassword: string, newPassword: string): Promise<any> => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    if (currentPassword === 'error' || currentPassword === 'wrong') {
+      throw new Error('Incorrect current password');
+    }
+    if (!newPassword) {
+      throw new Error('New password is required');
+    }
+    return { success: true };
+  },
+  clearAuditLogs: async (): Promise<any> => {
+    if (isDemoMode()) {
+      localStorage.setItem('mock_audits', JSON.stringify([]));
+      localStorage.setItem('mock_threats', JSON.stringify([]));
+      return { success: true };
+    }
+    const response = await api.delete('/api/audit');
+    return response.data;
+  },
+  clearThreatLogs: async (): Promise<any> => {
+    if (isDemoMode()) {
+      localStorage.setItem('mock_threats', JSON.stringify([]));
+      return { success: true };
+    }
+    const response = await api.delete('/api/threats');
+    return response.data;
+  },
+  resetConfigToDefaults: async (): Promise<any> => {
+    if (isDemoMode()) {
+      localStorage.setItem('mock_global_config', JSON.stringify(defaultMockConfig));
+      return { success: true };
+    }
+    const response = await api.post('/api/config/reset');
+    return response.data;
+  }
+};
+
 export default api;

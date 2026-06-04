@@ -99,3 +99,15 @@ export async function getAuditLogById(req: Request, res: Response): Promise<void
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }
+
+/**
+ * Deletes all audit logs from the database.
+ */
+export async function clearAuditLogs(req: Request, res: Response): Promise<void> {
+  try {
+    await pool.query('DELETE FROM audit_logs');
+    res.json({ success: true, message: 'All audit logs have been successfully cleared' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+}

@@ -118,3 +118,15 @@ export function streamThreatLogs(req: Request, res: Response): void {
     }
   });
 }
+
+/**
+ * Deletes all threat logs from the database.
+ */
+export async function clearThreatLogs(req: Request, res: Response): Promise<void> {
+  try {
+    await pool.query('DELETE FROM threat_logs');
+    res.json({ success: true, message: 'All threat logs have been successfully cleared' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+}

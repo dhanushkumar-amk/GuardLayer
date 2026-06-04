@@ -216,3 +216,31 @@ export const updateConfig = async (req: AuthenticatedRequest, res: Response) => 
     });
   }
 };
+
+// POST /api/config/reset - Reset all configs to default
+export const resetConfig = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // 1. Delete all config entries
+    await pool.query('DELETE FROM config');
+    
+    // 2. Re-create the global default config row
+    const insertResult = await pool.query(
+      `INSERT INTO config (api_key_id) VALUES (NULL) RETURNING *`
+    );
+    const config = insertResult.rows[0];
+
+    // 3. Clear Redis cache for config keys
+    const cacheKeys = await redis.keys('config:*');
+    if (cacheKeys.length > 0) {
+      await redis.del(...cacheKeys);
+    }
+    
+    return res.json({ success: true, message: 'All configurations have been reset to defaults', config });
+  } catch (error: any) {
+    console.error('Error resetting config:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_SERVER_ERROR',
+    });
+  }
+};
