@@ -1,5 +1,6 @@
 import { useAuthStore } from '../store/auth.store';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../lib/constants';
 
 export const useAuth = () => {
   const { isAuthenticated, user, clearAuth } = useAuthStore();
@@ -7,7 +8,7 @@ export const useAuth = () => {
 
   const logout = () => {
     clearAuth();
-    navigate('/login');
+    navigate(ROUTES.LOGIN);
   };
 
   return {

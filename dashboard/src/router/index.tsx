@@ -13,6 +13,7 @@ import Config from '../pages/Config';
 import Analytics from '../pages/Analytics';
 import Settings from '../pages/Settings';
 import Login from '../pages/Login';
+import Landing from '../pages/Landing';
 
 const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -25,6 +26,14 @@ const PublicGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 export const routes: RouteObject[] = [
+  {
+    path: ROUTES.LANDING,
+    element: (
+      <PublicGuard>
+        <Landing />
+      </PublicGuard>
+    ),
+  },
   {
     path: ROUTES.LOGIN,
     element: (
