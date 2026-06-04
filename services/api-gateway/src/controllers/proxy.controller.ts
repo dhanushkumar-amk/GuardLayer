@@ -194,8 +194,8 @@ export const chatCompletions = async (req: ApiKeyRequest, res: Response) => {
         pii_types: config.pii_types || [],
         toxicity_enabled: config.toxicity_enabled,
         toxicity_threshold: parseFloat(config.toxicity_threshold),
-        hallucination_enabled: true,
-        block_on_hallucination: false,
+        hallucination_enabled: config.hallucination_enabled,
+        block_on_hallucination: config.block_on_hallucination,
         format_validation_enabled: false,
       },
     });

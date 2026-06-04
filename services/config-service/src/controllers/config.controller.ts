@@ -104,60 +104,108 @@ export const updateConfig = async (req: AuthenticatedRequest, res: Response) => 
     toxicity_enabled,
     toxicity_threshold,
     max_tokens,
+    hallucination_enabled,
+    block_on_hallucination,
   } = req.body;
 
   try {
+    const isDefault = apiKeyId === 'default';
+
     // 1. Check if config exists
-    const checkResult = await pool.query(
-      `SELECT id FROM config WHERE api_key_id = $1`,
-      [apiKeyId]
-    );
+    const checkQuery = isDefault
+      ? `SELECT id FROM config WHERE api_key_id IS NULL`
+      : `SELECT id FROM config WHERE api_key_id = $1`;
+    const checkParams = isDefault ? [] : [apiKeyId];
+
+    const checkResult = await pool.query(checkQuery, checkParams);
 
     if (checkResult.rowCount === 0) {
       return res.status(404).json({
-        error: 'Configuration not found for this API key',
+        error: 'Configuration not found',
         code: 'NOT_FOUND_CONFIG',
       });
     }
 
     // 2. Update Postgres
-    const result = await pool.query(
-      `UPDATE config
-       SET
-         prompt_injection_enabled = COALESCE($2, prompt_injection_enabled),
-         prompt_injection_threshold = COALESCE($3, prompt_injection_threshold),
-         jailbreak_enabled = COALESCE($4, jailbreak_enabled),
-         jailbreak_threshold = COALESCE($5, jailbreak_threshold),
-         pii_scrubbing_enabled = COALESCE($6, pii_scrubbing_enabled),
-         pii_types = COALESCE($7, pii_types::jsonb),
-         topic_filter_enabled = COALESCE($8, topic_filter_enabled),
-         allowed_topics = COALESCE($9, allowed_topics::jsonb),
-         toxicity_enabled = COALESCE($10, toxicity_enabled),
-         toxicity_threshold = COALESCE($11, toxicity_threshold),
-         max_tokens = COALESCE($12, max_tokens),
-         updated_at = CURRENT_TIMESTAMP
-       WHERE api_key_id = $1
-       RETURNING *`,
-      [
-        apiKeyId,
-        prompt_injection_enabled !== undefined ? prompt_injection_enabled : null,
-        prompt_injection_threshold !== undefined ? prompt_injection_threshold : null,
-        jailbreak_enabled !== undefined ? jailbreak_enabled : null,
-        jailbreak_threshold !== undefined ? jailbreak_threshold : null,
-        pii_scrubbing_enabled !== undefined ? pii_scrubbing_enabled : null,
-        pii_types !== undefined ? JSON.stringify(pii_types) : null,
-        topic_filter_enabled !== undefined ? topic_filter_enabled : null,
-        allowed_topics !== undefined ? JSON.stringify(allowed_topics) : null,
-        toxicity_enabled !== undefined ? toxicity_enabled : null,
-        toxicity_threshold !== undefined ? toxicity_threshold : null,
-        max_tokens !== undefined ? max_tokens : null,
-      ]
-    );
+    const updateQuery = isDefault
+      ? `UPDATE config
+         SET
+           prompt_injection_enabled = COALESCE($1, prompt_injection_enabled),
+           prompt_injection_threshold = COALESCE($2, prompt_injection_threshold),
+           jailbreak_enabled = COALESCE($3, jailbreak_enabled),
+           jailbreak_threshold = COALESCE($4, jailbreak_threshold),
+           pii_scrubbing_enabled = COALESCE($5, pii_scrubbing_enabled),
+           pii_types = COALESCE($6, pii_types::jsonb),
+           topic_filter_enabled = COALESCE($7, topic_filter_enabled),
+           allowed_topics = COALESCE($8, allowed_topics::jsonb),
+           toxicity_enabled = COALESCE($9, toxicity_enabled),
+           toxicity_threshold = COALESCE($10, toxicity_threshold),
+           max_tokens = COALESCE($11, max_tokens),
+           hallucination_enabled = COALESCE($12, hallucination_enabled),
+           block_on_hallucination = COALESCE($13, block_on_hallucination),
+           updated_at = CURRENT_TIMESTAMP
+         WHERE api_key_id IS NULL
+         RETURNING *`
+      : `UPDATE config
+         SET
+           prompt_injection_enabled = COALESCE($2, prompt_injection_enabled),
+           prompt_injection_threshold = COALESCE($3, prompt_injection_threshold),
+           jailbreak_enabled = COALESCE($4, jailbreak_enabled),
+           jailbreak_threshold = COALESCE($5, jailbreak_threshold),
+           pii_scrubbing_enabled = COALESCE($6, pii_scrubbing_enabled),
+           pii_types = COALESCE($7, pii_types::jsonb),
+           topic_filter_enabled = COALESCE($8, topic_filter_enabled),
+           allowed_topics = COALESCE($9, allowed_topics::jsonb),
+           toxicity_enabled = COALESCE($10, toxicity_enabled),
+           toxicity_threshold = COALESCE($11, toxicity_threshold),
+           max_tokens = COALESCE($12, max_tokens),
+           hallucination_enabled = COALESCE($13, hallucination_enabled),
+           block_on_hallucination = COALESCE($14, block_on_hallucination),
+           updated_at = CURRENT_TIMESTAMP
+         WHERE api_key_id = $1
+         RETURNING *`;
 
+    const params = isDefault
+      ? [
+          prompt_injection_enabled !== undefined ? prompt_injection_enabled : null,
+          prompt_injection_threshold !== undefined ? prompt_injection_threshold : null,
+          jailbreak_enabled !== undefined ? jailbreak_enabled : null,
+          jailbreak_threshold !== undefined ? jailbreak_threshold : null,
+          pii_scrubbing_enabled !== undefined ? pii_scrubbing_enabled : null,
+          pii_types !== undefined ? JSON.stringify(pii_types) : null,
+          topic_filter_enabled !== undefined ? topic_filter_enabled : null,
+          allowed_topics !== undefined ? JSON.stringify(allowed_topics) : null,
+          toxicity_enabled !== undefined ? toxicity_enabled : null,
+          toxicity_threshold !== undefined ? toxicity_threshold : null,
+          max_tokens !== undefined ? max_tokens : null,
+          hallucination_enabled !== undefined ? hallucination_enabled : null,
+          block_on_hallucination !== undefined ? block_on_hallucination : null,
+        ]
+      : [
+          apiKeyId,
+          prompt_injection_enabled !== undefined ? prompt_injection_enabled : null,
+          prompt_injection_threshold !== undefined ? prompt_injection_threshold : null,
+          jailbreak_enabled !== undefined ? jailbreak_enabled : null,
+          jailbreak_threshold !== undefined ? jailbreak_threshold : null,
+          pii_scrubbing_enabled !== undefined ? pii_scrubbing_enabled : null,
+          pii_types !== undefined ? JSON.stringify(pii_types) : null,
+          topic_filter_enabled !== undefined ? topic_filter_enabled : null,
+          allowed_topics !== undefined ? JSON.stringify(allowed_topics) : null,
+          toxicity_enabled !== undefined ? toxicity_enabled : null,
+          toxicity_threshold !== undefined ? toxicity_threshold : null,
+          max_tokens !== undefined ? max_tokens : null,
+          hallucination_enabled !== undefined ? hallucination_enabled : null,
+          block_on_hallucination !== undefined ? block_on_hallucination : null,
+        ];
+
+    const result = await pool.query(updateQuery, params);
     const updatedConfig = result.rows[0];
 
     // 3. Invalidate Redis cache
     await redis.del(cacheKey);
+    if (isDefault) {
+      await redis.del('config:default');
+    }
 
     return res.json(updatedConfig);
   } catch (error: any) {

@@ -364,7 +364,7 @@ export const configApi = {
     if (isDemoMode()) {
       return getMockData('global_config', defaultMockConfig) as unknown as Config;
     }
-    const response = await api.get('/api/config');
+    const response = await api.get('/api/config/default');
     return response.data;
   },
   updateConfig: async (config: Partial<Config>): Promise<Config> => {
@@ -374,7 +374,7 @@ export const configApi = {
       setMockData('global_config', updated);
       return updated as unknown as Config;
     }
-    const response = await api.put('/api/config', config);
+    const response = await api.put('/api/config/default', config);
     return response.data;
   },
 };
