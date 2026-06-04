@@ -7,7 +7,6 @@ import type {
   AuditLog,
   ThreatLog,
   Config,
-  Analytics,
 } from '../types';
 
 const api = axios.create({
@@ -381,16 +380,81 @@ export const configApi = {
 
 // Analytics endpoints
 export const analyticsApi = {
-  getAnalytics: async (): Promise<Analytics> => {
+  getAnalytics: async (period?: string): Promise<any> => {
     if (isDemoMode()) {
+      const periodStr = period || '7d';
+      let requestMultiplier = 1;
+      if (periodStr === '24h') requestMultiplier = 0.3;
+      if (periodStr === '30d') requestMultiplier = 4;
+
+      const total = Math.round(150 * requestMultiplier);
+      const blocked = Math.round(35 * requestMultiplier);
+      const blockRate = total > 0 ? (blocked / total) * 100 : 0;
+      const avgLatency = 120;
+      const piiDetections = Math.round(12 * requestMultiplier);
+
+      const threats_by_type = {
+        prompt_injection: Math.round(15 * requestMultiplier),
+        jailbreak: Math.round(12 * requestMultiplier),
+        pii: Math.round(8 * requestMultiplier),
+        toxicity: Math.round(4 * requestMultiplier),
+      };
+
+      const top_threat_types = [
+        { threat_type: 'prompt_injection', count: threats_by_type.prompt_injection },
+        { threat_type: 'jailbreak', count: threats_by_type.jailbreak },
+        { threat_type: 'pii', count: threats_by_type.pii },
+        { threat_type: 'toxicity', count: threats_by_type.toxicity },
+      ].sort((a, b) => b.count - a.count);
+
+      // Generate requests over time
+      const requests_over_time = [];
+      const numBuckets = periodStr === '24h' ? 12 : (periodStr === '30d' ? 30 : 7);
+      const bucketUnit = periodStr === '24h' ? 'hour' : 'day';
+      for (let i = numBuckets; i >= 0; i--) {
+        const time = new Date();
+        if (bucketUnit === 'hour') {
+          time.setHours(time.getHours() - i);
+        } else {
+          time.setDate(time.getDate() - i);
+        }
+        const hourlyTotal = Math.round((total / numBuckets) * (0.5 + Math.random()));
+        const hourlyBlocked = Math.round(hourlyTotal * 0.23);
+        requests_over_time.push({
+          bucket: time.toISOString(),
+          count: hourlyTotal,
+          blocked: hourlyBlocked,
+        });
+      }
+
+      const latency_distribution = [
+        { range: '0-50ms', count: Math.round(45 * requestMultiplier) },
+        { range: '50-100ms', count: Math.round(65 * requestMultiplier) },
+        { range: '100-200ms', count: Math.round(25 * requestMultiplier) },
+        { range: '200-500ms', count: Math.round(10 * requestMultiplier) },
+        { range: '500ms+', count: Math.round(5 * requestMultiplier) },
+      ];
+
+      const most_active_api_keys = [
+        { key_prefix: 'gl_live_abc123', count: Math.round(90 * requestMultiplier), blocked: Math.round(20 * requestMultiplier), block_rate: 22.22 },
+        { key_prefix: 'gl_test_xyz987', count: Math.round(45 * requestMultiplier), blocked: Math.round(10 * requestMultiplier), block_rate: 22.22 },
+        { key_prefix: 'gl_live_old555', count: Math.round(15 * requestMultiplier), blocked: Math.round(5 * requestMultiplier), block_rate: 33.33 },
+      ];
+
       return {
-        total_requests: 18,
-        blocked_requests: 4,
-        block_rate: 22.2,
-        latency_p99_ms: 140,
-      } as unknown as Analytics;
+        total_requests: total,
+        blocked_requests: blocked,
+        block_rate: blockRate,
+        threats_by_type,
+        requests_over_time,
+        top_threat_types,
+        pii_detections_count: piiDetections,
+        average_latency_ms: avgLatency,
+        latency_distribution,
+        most_active_api_keys,
+      };
     }
-    const response = await api.get('/api/analytics');
+    const response = await api.get('/api/analytics', { params: { period } });
     return response.data;
   },
   getAnalyticsSummary: async (period?: string): Promise<any> => {

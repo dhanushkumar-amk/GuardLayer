@@ -88,7 +88,9 @@ export async function getAnalytics(req: Request, res: Response): Promise<void> {
 
     // 8. Requests over time
     const rotQuery = `
-      SELECT DATE_TRUNC('${dateTrunc}', created_at) as bucket, COUNT(*) as count 
+      SELECT DATE_TRUNC('${dateTrunc}', created_at) as bucket,
+             COUNT(*) as count,
+             COUNT(CASE WHEN was_blocked = true THEN 1 END) as blocked
       FROM audit_logs 
       ${whereClause} 
       GROUP BY bucket 
@@ -98,7 +100,54 @@ export async function getAnalytics(req: Request, res: Response): Promise<void> {
     const requests_over_time = rotRes.rows.map((row) => ({
       bucket: row.bucket,
       count: parseInt(row.count, 10),
+      blocked: parseInt(row.blocked, 10) || 0,
     }));
+
+    // 9. Latency distribution
+    const latencyQuery = `
+      SELECT
+        COUNT(CASE WHEN latency_ms < 50 THEN 1 END) as "0-50ms",
+        COUNT(CASE WHEN latency_ms >= 50 AND latency_ms < 100 THEN 1 END) as "50-100ms",
+        COUNT(CASE WHEN latency_ms >= 100 AND latency_ms < 200 THEN 1 END) as "100-200ms",
+        COUNT(CASE WHEN latency_ms >= 200 AND latency_ms < 500 THEN 1 END) as "200-500ms",
+        COUNT(CASE WHEN latency_ms >= 500 THEN 1 END) as "500ms+"
+      FROM audit_logs
+      ${whereClause}
+    `;
+    const latencyRes = await pool.query(latencyQuery, values);
+    const latencyRow = latencyRes.rows[0] || {};
+    const latency_distribution = [
+      { range: '0-50ms', count: parseInt(latencyRow['0-50ms'] || '0', 10) },
+      { range: '50-100ms', count: parseInt(latencyRow['50-100ms'] || '0', 10) },
+      { range: '100-200ms', count: parseInt(latencyRow['100-200ms'] || '0', 10) },
+      { range: '200-500ms', count: parseInt(latencyRow['200-500ms'] || '0', 10) },
+      { range: '500ms+', count: parseInt(latencyRow['500ms+'] || '0', 10) },
+    ];
+
+    // 10. Most active API keys
+    const activeKeysQuery = `
+      SELECT COALESCE(ak.key_prefix, 'global') as key_prefix,
+             COUNT(al.id) as count,
+             COUNT(CASE WHEN al.was_blocked = true THEN 1 END) as blocked
+      FROM audit_logs al
+      LEFT JOIN api_keys ak ON al.api_key_id = ak.id
+      ${whereClause}
+      GROUP BY ak.id, ak.key_prefix
+      ORDER BY count DESC
+      LIMIT 10
+    `;
+    const activeKeysRes = await pool.query(activeKeysQuery, values);
+    const most_active_api_keys = activeKeysRes.rows.map((row) => {
+      const cnt = parseInt(row.count, 10) || 0;
+      const blk = parseInt(row.blocked, 10) || 0;
+      const rate = cnt > 0 ? (blk / cnt) * 100 : 0;
+      return {
+        key_prefix: row.key_prefix,
+        count: cnt,
+        blocked: blk,
+        block_rate: parseFloat(rate.toFixed(2)),
+      };
+    });
 
     res.json({
       total_requests,
@@ -109,6 +158,8 @@ export async function getAnalytics(req: Request, res: Response): Promise<void> {
       top_threat_types,
       pii_detections_count,
       average_latency_ms,
+      latency_distribution,
+      most_active_api_keys,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal Server Error' });
