@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageHeader from '../components/layout/PageHeader';
 import Card from '../components/ui/Card';
@@ -31,7 +31,7 @@ export const AuditLog: React.FC = () => {
   // Drawer / Side Panel State
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   const [selectedLogDetails, setSelectedLogDetails] = useState<AuditLogType | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+  const [, setLoadingDetails] = useState<boolean>(false);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
   const [drawerTab, setDrawerTab] = useState<'input' | 'output' | 'security'>('input');
   const [isCopiedField, setIsCopiedField] = useState<string | null>(null);

@@ -37,7 +37,7 @@ export const Overview: React.FC = () => {
       const [summaryRes, threatsRes, auditsRes] = await Promise.all([
         analyticsApi.getAnalyticsSummary('24h'),
         threatsApi.getRecentThreats(),
-        auditApi.getAuditLogs(5)
+        auditApi.getAuditLogs({ limit: 5 })
       ]);
 
       setSummaryData(summaryRes);

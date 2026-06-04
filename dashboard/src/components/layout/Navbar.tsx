@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useThemeStore } from '../../store/theme.store';
 import { ROUTES } from '../../lib/constants';
 
 interface NavbarProps {
@@ -10,7 +9,6 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useThemeStore();
   const location = useLocation();
 
   const getBreadcrumbName = () => {
