@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import PageHeader from '../components/layout/PageHeader';
 import Card from '../components/ui/Card';
 import { threatsApi } from '../lib/api';
-import { API_BASE_URL } from '../lib/constants';
 import { useNotificationsStore } from '../store/notifications.store';
+import useSSE from '../hooks/useSSE';
+import LiveIndicator from '../components/ui/LiveIndicator';
 import type { ThreatLog } from '../types';
 
 export const Threats: React.FC = () => {
@@ -29,12 +30,8 @@ export const Threats: React.FC = () => {
 
   // UI Detail States
   const [expandedThreats, setExpandedThreats] = useState<Set<string>>(new Set());
-  const [sseConnected, setSseConnected] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const [isCopiedId, setIsCopiedId] = useState<string | null>(null);
-
-  // SSE Source Ref
-  const sseSourceRef = useRef<EventSource | null>(null);
 
   // Clear badge on mount
   useEffect(() => {
@@ -93,62 +90,29 @@ export const Threats: React.FC = () => {
     }
   };
 
-  // SSE stream feed
+  const { status, lastThreatEvent } = useSSE();
+
   useEffect(() => {
-    const connectSSE = () => {
-      if (sseSourceRef.current) {
-        sseSourceRef.current.close();
-      }
-
-      const sseUrl = `${API_BASE_URL}/api/threats/stream`;
-      const source = new EventSource(sseUrl);
-      sseSourceRef.current = source;
-
-      source.onopen = () => {
-        setSseConnected(true);
-      };
-
-      source.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.status === 'connected') return;
-
-          const newThreat = data as ThreatLog;
-          const matchesType = !threatType || (newThreat as any).threat_type === threatType;
-          const matchesKey = !apiKeyId || (newThreat as any).api_key_id?.includes(apiKeyId);
-          
-          if (matchesType && matchesKey) {
-            setThreats((prev) => {
-              const updated = [newThreat, ...prev];
-              if (updated.length > limit) {
-                updated.pop();
-              }
-              return updated;
-            });
-            setTotalCount((c) => c + 1);
-            playNotificationPing();
-          } else {
-            setHasNewThreat(true);
+    if (lastThreatEvent) {
+      const newThreat = lastThreatEvent as ThreatLog;
+      const matchesType = !threatType || (newThreat as any).threat_type === threatType;
+      const matchesKey = !apiKeyId || (newThreat as any).api_key_id?.includes(apiKeyId);
+      
+      if (matchesType && matchesKey) {
+        setThreats((prev) => {
+          if (prev.some(t => t.id === newThreat.id)) return prev;
+          const newThreatWithFlash = { ...newThreat, isNew: true };
+          const updated = [newThreatWithFlash, ...prev];
+          if (updated.length > limit) {
+            updated.pop();
           }
-        } catch (err) {
-          console.error('[SSE] Error:', err);
-        }
-      };
-
-      source.onerror = () => {
-        setSseConnected(false);
-      };
-    };
-
-    connectSSE();
-
-    return () => {
-      if (sseSourceRef.current) {
-        sseSourceRef.current.close();
-        sseSourceRef.current = null;
+          return updated;
+        });
+        setTotalCount((c) => c + 1);
+        playNotificationPing();
       }
-    };
-  }, [threatType, apiKeyId, soundEnabled]);
+    }
+  }, [lastThreatEvent, threatType, apiKeyId]);
 
   // Toggle expanded rows
   const toggleRow = (id: string) => {
@@ -285,14 +249,7 @@ export const Threats: React.FC = () => {
             )}
           </button>
 
-          <span className={`text-[9px] uppercase font-bold font-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
-            sseConnected
-              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-sm shadow-emerald-500/10'
-              : 'text-amber-500 bg-amber-500/10 border-amber-500/20 animate-pulse'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span>{sseConnected ? 'Live Feed Connected' : 'Reconnecting Live...'}</span>
-          </span>
+          <LiveIndicator status={status} />
         </div>
       </div>
 
@@ -482,7 +439,7 @@ export const Threats: React.FC = () => {
                             onClick={() => toggleRow(id)}
                             className={`hover:bg-[#121217]/50 active:bg-[#121217]/30 cursor-pointer transition-all duration-200 border-l-2 ${
                               isExpanded ? 'bg-[#121217]/30 border-l-[#ff5a1f]' : 'border-l-transparent'
-                            }`}
+                            } ${(threat as any).isNew ? 'animate-flash' : ''}`}
                           >
                             <td className="py-3 px-5">
                               <span className={`px-2.5 py-0.5 border rounded-full text-[9px] font-sans font-bold capitalize select-none ${getBadgeClass((threat as any).threat_type || threat.classification || 'unknown')}`}>

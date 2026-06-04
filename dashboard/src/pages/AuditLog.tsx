@@ -3,9 +3,13 @@ import MainLayout from '../components/layout/MainLayout';
 import PageHeader from '../components/layout/PageHeader';
 import Card from '../components/ui/Card';
 import { auditApi } from '../lib/api';
+import useSSE from '../hooks/useSSE';
+import LiveIndicator from '../components/ui/LiveIndicator';
 import type { AuditLog as AuditLogType } from '../types';
 
 export const AuditLog: React.FC = () => {
+  const { status, lastAuditEvent } = useSSE();
+
   // Core State
   const [logs, setLogs] = useState<AuditLogType[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -78,6 +82,54 @@ export const AuditLog: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [autoRefresh, apiKeyId, wasBlocked, fromDate, toDate, llmProvider, search, page, limit]);
+
+  // Handle incoming real-time SSE audit events
+  useEffect(() => {
+    if (lastAuditEvent && autoRefresh) {
+      const newLog = lastAuditEvent as AuditLogType;
+
+      // Filter verification for consistency
+      const matchesKey = !apiKeyId || newLog.api_key_id?.toLowerCase().includes(apiKeyId.toLowerCase());
+      
+      const logBlocked = newLog.was_blocked || (newLog as any).was_blocked;
+      const matchesBlocked = wasBlocked === '' || String(logBlocked) === wasBlocked;
+      
+      const logProvider = newLog.llm_provider || '';
+      const matchesProvider = !llmProvider || logProvider.toLowerCase() === llmProvider.toLowerCase();
+      
+      const searchLower = search.toLowerCase();
+      const matchesSearch = !search || 
+        newLog.id.toLowerCase().includes(searchLower) || 
+        (newLog.original_input || '').toLowerCase().includes(searchLower);
+
+      let matchesFrom = true;
+      if (fromDate) {
+        const logDate = new Date(newLog.timestamp || (newLog as any).created_at);
+        const filterDate = new Date(fromDate);
+        matchesFrom = logDate >= filterDate;
+      }
+      let matchesTo = true;
+      if (toDate) {
+        const logDate = new Date(newLog.timestamp || (newLog as any).created_at);
+        const filterDate = new Date(toDate);
+        filterDate.setHours(23, 59, 59, 999);
+        matchesTo = logDate <= filterDate;
+      }
+
+      if (matchesKey && matchesBlocked && matchesProvider && matchesSearch && matchesFrom && matchesTo) {
+        setLogs((prev) => {
+          if (prev.some((log) => log.id === newLog.id)) return prev;
+          const newLogWithFlash = { ...newLog, isNew: true };
+          const updated = [newLogWithFlash, ...prev];
+          if (updated.length > limit) {
+            updated.pop();
+          }
+          return updated;
+        });
+        setTotalCount((c) => c + 1);
+      }
+    }
+  }, [lastAuditEvent, autoRefresh, apiKeyId, wasBlocked, llmProvider, search, fromDate, toDate, limit]);
 
   // Fetch single log detail when selected
   useEffect(() => {
@@ -204,23 +256,27 @@ export const AuditLog: React.FC = () => {
           description="Detailed inspection of LLM requests, response logs, latency indicators, and triggered system guardrails."
         />
         
-        {/* Auto Refresh switch */}
-        <div className="flex items-center gap-2 select-none bg-[#0d0d11]/60 border border-[#17171e]/80 px-3 py-1.5 rounded-lg">
-          <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider cursor-pointer">
-            Auto Refresh (30s)
-          </label>
-          <button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              autoRefresh ? 'bg-[#ff5a1f]' : 'bg-[#1a1a24]'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                autoRefresh ? 'translate-x-4' : 'translate-x-0'
+        {/* Connection status and Auto Refresh switch */}
+        <div className="flex items-center gap-3 select-none">
+          <LiveIndicator status={status} />
+          
+          <div className="flex items-center gap-2 bg-[#0d0d11]/60 border border-[#17171e]/80 px-3 py-1.5 rounded-lg">
+            <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider cursor-pointer">
+              Auto Refresh (30s)
+            </label>
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                autoRefresh ? 'bg-[#ff5a1f]' : 'bg-[#1a1a24]'
               }`}
-            />
-          </button>
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  autoRefresh ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -420,7 +476,7 @@ export const AuditLog: React.FC = () => {
                             blocked 
                               ? 'bg-red-500/[0.03] hover:bg-red-500/[0.06] border-l-red-500' 
                               : 'border-l-transparent'
-                          }`}
+                          } ${(log as any).isNew ? 'animate-audit-flash' : ''}`}
                         >
                           {/* Request ID */}
                           <td className="py-3.5 px-5 text-slate-300 font-mono text-[10px] select-all font-bold">

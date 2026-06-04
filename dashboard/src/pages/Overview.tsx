@@ -4,6 +4,7 @@ import PageHeader from '../components/layout/PageHeader';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import { analyticsApi, threatsApi, auditApi } from '../lib/api';
+import useSSE from '../hooks/useSSE';
 import type { ThreatLog, AuditLog } from '../types';
 
 export const Overview: React.FC = () => {
@@ -63,6 +64,76 @@ export const Overview: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  const { lastThreatEvent, lastAuditEvent } = useSSE();
+
+  // Listen to SSE threat events
+  useEffect(() => {
+    if (lastThreatEvent && summaryData) {
+      const newThreat = lastThreatEvent as ThreatLog;
+      
+      // Update recent threats
+      setRecentThreats((prev) => {
+        if (prev.some(t => t.id === newThreat.id)) return prev;
+        return [newThreat, ...prev].slice(0, 5);
+      });
+
+      // Update summary counts
+      setSummaryData((prev) => {
+        if (!prev) return null;
+        const newTotal = prev.total_requests + 1;
+        const newBlocked = prev.blocked_requests + 1;
+        
+        // Update threats_by_type
+        const type = newThreat.threat_type || 'unknown';
+        const updatedThreatsByType = {
+          ...prev.threats_by_type,
+          [type]: (prev.threats_by_type[type] || 0) + 1,
+        };
+
+        // Update top_threat_types
+        const updatedTopThreatTypes = Object.entries(updatedThreatsByType).map(([threat_type, count]) => ({
+          threat_type,
+          count: count as number,
+        })).sort((a, b) => b.count - a.count);
+
+        return {
+          ...prev,
+          total_requests: newTotal,
+          blocked_requests: newBlocked,
+          block_rate: (newBlocked / newTotal) * 100,
+          threats_by_type: updatedThreatsByType,
+          top_threat_types: updatedTopThreatTypes,
+        };
+      });
+    }
+  }, [lastThreatEvent]);
+
+  // Listen to SSE audit events
+  useEffect(() => {
+    if (lastAuditEvent && summaryData) {
+      const newAudit = lastAuditEvent as AuditLog;
+      
+      // Update recent audits
+      setRecentAudits((prev) => {
+        if (prev.some(a => a.id === newAudit.id)) return prev;
+        return [newAudit, ...prev].slice(0, 5);
+      });
+
+      // Avoid double-counting total requests when a blocked query occurs (since it triggers both)
+      if (!newAudit.was_blocked) {
+        setSummaryData((prev) => {
+          if (!prev) return null;
+          const newTotal = prev.total_requests + 1;
+          return {
+            ...prev,
+            total_requests: newTotal,
+            block_rate: (prev.blocked_requests / newTotal) * 100,
+          };
+        });
+      }
+    }
+  }, [lastAuditEvent]);
 
   // Format timestamp helper
   const formatTime = (isoString: string) => {

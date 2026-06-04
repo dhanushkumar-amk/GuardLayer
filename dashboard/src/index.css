@@ -106,3 +106,43 @@ body,
 .animate-slideUp {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes flash {
+  0% {
+    background-color: rgba(255, 90, 31, 0.25);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-flash {
+  animation: flash 2.5s ease-out forwards;
+}
+
+@keyframes audit-flash-bg {
+  0% {
+    background-color: #eff6ff; /* bg-blue-50 */
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes audit-flash-text {
+  0% {
+    color: #1e293b !important;
+  }
+  100% {
+    /* return to original */
+  }
+}
+
+.animate-audit-flash {
+  animation: audit-flash-bg 2s ease-out forwards;
+}
+
+.animate-audit-flash td,
+.animate-audit-flash td span {
+  animation: audit-flash-text 2s ease-out forwards;
+}
