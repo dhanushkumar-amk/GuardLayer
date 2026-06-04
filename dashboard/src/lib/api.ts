@@ -307,14 +307,17 @@ export const apiKeysApi = {
   createKey: async (name: string): Promise<ApiKey> => {
     if (isDemoMode()) {
       const keys = getMockData('keys', defaultMockKeys);
+      const hex = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
+      const rawKey = `gl-${hex}`;
+      const prefix = rawKey.substring(0, 8);
       const newKey: ApiKey = {
         id: 'mock-key-' + Math.random().toString(36).substring(2, 11),
         name,
-        keyPrefix: 'gl_live_' + Math.random().toString(36).substring(2, 8),
+        keyPrefix: prefix,
         role: 'user',
         active: true,
         createdAt: new Date().toISOString(),
-        key: 'gl_live_' + Math.random().toString(36).substring(2, 8) + '********************' + Math.random().toString(36).substring(2, 6),
+        key: rawKey,
       };
       keys.push(newKey);
       setMockData('keys', keys);
