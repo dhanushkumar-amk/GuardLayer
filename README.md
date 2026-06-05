@@ -1,4 +1,8 @@
-# GuardLayer
+<p align="center">
+  <img src="img/guardlayer_banner.png" alt="GuardLayer Banner" width="100%">
+</p>
+
+<h1 align="center">GuardLayer</h1>
 
 <p align="center">
   <strong>Open-source LLM security gateway with guardrails, auditing, analytics, and an admin dashboard.</strong>
