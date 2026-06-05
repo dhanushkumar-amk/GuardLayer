@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  node-tests:
+    name: Node.js Service Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Test api-gateway
+        run: |
+          cd services/api-gateway
+          npm install
+          npm test
+
+      - name: Test config-service
+        run: |
+          cd services/config-service
+          npm install
+          npm test
+
+      - name: Test audit-service
+        run: |
+          cd services/audit-service
+          npm install
+          npm test
+
+      - name: Test llm-proxy
+        run: |
+          cd services/llm-proxy
+          npm install
+          npm test
+
+  python-tests:
+    name: Python Service Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Test input-guard
+        run: |
+          cd services/input-guard
+          pip install -r requirements.txt
+          pytest
+
+      - name: Test output-guard
+        run: |
+          cd services/output-guard
+          pip install -r requirements.txt
+          pytest

@@ -174,7 +174,13 @@ sequenceDiagram
 
 ### 1. Configure environment variables
 
-Edit `.env` in the project root with values for your local environment:
+Create a local environment file from the checked-in example:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` in the project root with values for your local environment:
 
 ```env
 POSTGRES_USER=guardlayer_admin
@@ -183,6 +189,10 @@ POSTGRES_DB=guardlayer
 POSTGRES_PORT=5432
 REDIS_PORT=6379
 JWT_SECRET=change-this-to-a-long-random-secret
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+GROQ_API_KEY=
+OPENROUTER_API_KEY=
 ```
 
 ### 2. Start the backend stack
@@ -214,7 +224,9 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_BASE_URL` if your API gateway is not available at `http://localhost:8080`.
+The dashboard runs at `http://localhost:3000`.
+
+Set `VITE_API_BASE_URL` only if your API gateway is not available at `http://localhost:8080`.
 
 ### 5. Create the first admin user
 
@@ -245,7 +257,7 @@ curl -X POST http://localhost:8080/api/keys \
 
 ### 7. Configure upstream provider credentials
 
-The current gateway implementation resolves provider credentials from environment variables on `api-gateway`, such as:
+The gateway reads provider credentials from the root `.env` file and passes them through to `api-gateway` via Docker Compose:
 
 ```env
 OPENAI_API_KEY=your-openai-api-key
@@ -254,7 +266,7 @@ GROQ_API_KEY=your-groq-api-key
 OPENROUTER_API_KEY=your-openrouter-api-key
 ```
 
-If you are running with Docker Compose, add the provider keys you need under the `api-gateway` service environment in [`docker-compose.yml`](docker-compose.yml).
+If you only want one upstream provider, you only need to set that one key.
 
 ### 8. Send traffic through GuardLayer
 
@@ -270,6 +282,20 @@ curl -X POST http://localhost:8080/v1/chat/completions \
     \"temperature\": 0.2
   }"
 ```
+
+### 9. Run the live demo script
+
+The demo script exercises five request types: clean, injection, jailbreak, PII, and toxic.
+
+```bash
+set GUARDLAYER_API_KEY=<guardlayer-api-key>
+python demo/demo.py
+```
+
+Optional environment variables:
+
+- `GUARDLAYER_BASE_URL` defaults to `http://localhost:8080`
+- `GUARDLAYER_MODEL` defaults to `openai/gpt-4o-mini`
 
 ## Configuration model
 
@@ -433,6 +459,30 @@ npm install
 npm test
 ```
 
+## Fresh-machine checklist
+
+These are the exact steps to use on a new machine:
+
+```bash
+git clone <your-repo-url> GuardLayer
+cd GuardLayer
+cp .env.example .env
+docker compose up --build
+cd dashboard
+npm install
+npm run dev
+```
+
+Then verify:
+
+- Dashboard loads at `http://localhost:3000`
+- First admin registration succeeds
+- Second admin registration is rejected
+- Login returns a JWT
+- API key creation succeeds
+- A clean chat request returns a real LLM response once at least one upstream provider key is configured
+- A prompt-injection request is blocked and appears on the threats page in real time
+
 ## Deployment notes
 
 - Use persistent volumes for PostgreSQL and Redis
@@ -440,6 +490,48 @@ npm test
 - Scale stateless services horizontally: `api-gateway`, `input-guard`, `output-guard`
 - Use Redis for pub/sub and queue decoupling
 - Back up PostgreSQL regularly
+
+## Docker Hub publish
+
+After building and validating locally, tag and push each image:
+
+```bash
+docker build -t <dockerhub-user>/guardlayer-api-gateway:1.0.0 ./services/api-gateway
+docker build -t <dockerhub-user>/guardlayer-api-gateway:latest ./services/api-gateway
+docker build -t <dockerhub-user>/guardlayer-config-service:1.0.0 ./services/config-service
+docker build -t <dockerhub-user>/guardlayer-config-service:latest ./services/config-service
+docker build -t <dockerhub-user>/guardlayer-input-guard:1.0.0 ./services/input-guard
+docker build -t <dockerhub-user>/guardlayer-input-guard:latest ./services/input-guard
+docker build -t <dockerhub-user>/guardlayer-output-guard:1.0.0 ./services/output-guard
+docker build -t <dockerhub-user>/guardlayer-output-guard:latest ./services/output-guard
+docker build -t <dockerhub-user>/guardlayer-llm-proxy:1.0.0 ./services/llm-proxy
+docker build -t <dockerhub-user>/guardlayer-llm-proxy:latest ./services/llm-proxy
+docker build -t <dockerhub-user>/guardlayer-audit-service:1.0.0 ./services/audit-service
+docker build -t <dockerhub-user>/guardlayer-audit-service:latest ./services/audit-service
+docker build -t <dockerhub-user>/guardlayer-db-migrations:1.0.0 ./services/db-migrations
+docker build -t <dockerhub-user>/guardlayer-db-migrations:latest ./services/db-migrations
+```
+
+Push them after `docker login`:
+
+```bash
+docker push <dockerhub-user>/guardlayer-api-gateway:1.0.0
+docker push <dockerhub-user>/guardlayer-api-gateway:latest
+docker push <dockerhub-user>/guardlayer-config-service:1.0.0
+docker push <dockerhub-user>/guardlayer-config-service:latest
+docker push <dockerhub-user>/guardlayer-input-guard:1.0.0
+docker push <dockerhub-user>/guardlayer-input-guard:latest
+docker push <dockerhub-user>/guardlayer-output-guard:1.0.0
+docker push <dockerhub-user>/guardlayer-output-guard:latest
+docker push <dockerhub-user>/guardlayer-llm-proxy:1.0.0
+docker push <dockerhub-user>/guardlayer-llm-proxy:latest
+docker push <dockerhub-user>/guardlayer-audit-service:1.0.0
+docker push <dockerhub-user>/guardlayer-audit-service:latest
+docker push <dockerhub-user>/guardlayer-db-migrations:1.0.0
+docker push <dockerhub-user>/guardlayer-db-migrations:latest
+```
+
+If you publish images, update [`docker-compose.yml`](docker-compose.yml) or provide a production override so a fresh machine can run `docker compose pull` before `docker compose up`.
 
 See [docs/self-hosting.md](docs/self-hosting.md) for production guidance.
 

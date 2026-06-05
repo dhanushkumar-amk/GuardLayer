@@ -47,9 +47,9 @@ def post_json(url: str, payload: dict, headers: dict) -> tuple[int, dict | str, 
         body = exc.read().decode("utf-8")
         elapsed_ms = (time.perf_counter() - started) * 1000
         try:
-          return exc.code, json.loads(body), elapsed_ms
+            return exc.code, json.loads(body), elapsed_ms
         except json.JSONDecodeError:
-          return exc.code, body, elapsed_ms
+            return exc.code, body, elapsed_ms
 
 
 def main() -> None:
