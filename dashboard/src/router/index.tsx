@@ -28,94 +28,103 @@ const PublicGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const isStandaloneLanding = import.meta.env.VITE_STANDALONE_LANDING === 'true';
 
-export const routes: RouteObject[] = [
-  {
-    path: ROUTES.LANDING,
-    element: isStandaloneLanding ? (
-      <PublicGuard>
-        <Landing />
-      </PublicGuard>
-    ) : (
-      <Navigate to={ROUTES.LOGIN} replace />
-    ),
-  },
-  {
-    path: ROUTES.LOGIN,
-    element: (
-      <PublicGuard>
-        <Login />
-      </PublicGuard>
-    ),
-  },
-  {
-    path: ROUTES.REGISTER,
-    element: (
-      <PublicGuard>
-        <Register />
-      </PublicGuard>
-    ),
-  },
-  {
-    path: ROUTES.OVERVIEW,
-    element: (
-      <AuthGuard>
-        <Overview />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: ROUTES.THREATS,
-    element: (
-      <AuthGuard>
-        <Threats />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: ROUTES.AUDIT,
-    element: (
-      <AuthGuard>
-        <AuditLog />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: ROUTES.KEYS,
-    element: (
-      <AuthGuard>
-        <ApiKeys />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: ROUTES.CONFIG,
-    element: (
-      <AuthGuard>
-        <Config />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: ROUTES.ANALYTICS,
-    element: (
-      <AuthGuard>
-        <Analytics />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: ROUTES.SETTINGS,
-    element: (
-      <AuthGuard>
-        <Settings />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: '*',
-    element: <Navigate to={ROUTES.OVERVIEW} replace />,
-  },
-];
+export const routes: RouteObject[] = isStandaloneLanding
+  ? [
+      {
+        path: ROUTES.LANDING,
+        element: (
+          <PublicGuard>
+            <Landing />
+          </PublicGuard>
+        ),
+      },
+      {
+        path: '*',
+        element: <Navigate to={ROUTES.LANDING} replace />,
+      },
+    ]
+  : [
+      {
+        path: ROUTES.LANDING,
+        element: <Navigate to={ROUTES.LOGIN} replace />,
+      },
+      {
+        path: ROUTES.LOGIN,
+        element: (
+          <PublicGuard>
+            <Login />
+          </PublicGuard>
+        ),
+      },
+      {
+        path: ROUTES.REGISTER,
+        element: (
+          <PublicGuard>
+            <Register />
+          </PublicGuard>
+        ),
+      },
+      {
+        path: ROUTES.OVERVIEW,
+        element: (
+          <AuthGuard>
+            <Overview />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: ROUTES.THREATS,
+        element: (
+          <AuthGuard>
+            <Threats />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: ROUTES.AUDIT,
+        element: (
+          <AuthGuard>
+            <AuditLog />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: ROUTES.KEYS,
+        element: (
+          <AuthGuard>
+            <ApiKeys />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: ROUTES.CONFIG,
+        element: (
+          <AuthGuard>
+            <Config />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: ROUTES.ANALYTICS,
+        element: (
+          <AuthGuard>
+            <Analytics />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: ROUTES.SETTINGS,
+        element: (
+          <AuthGuard>
+            <Settings />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: '*',
+        element: <Navigate to={ROUTES.OVERVIEW} replace />,
+      },
+    ];
 
 export const router = createBrowserRouter(routes);
 export default router;

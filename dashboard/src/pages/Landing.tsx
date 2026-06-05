@@ -116,7 +116,11 @@ export const Landing: React.FC = () => {
   };
 
   const handleLoginRedirect = () => {
-    navigate(ROUTES.LOGIN);
+    if (import.meta.env.VITE_STANDALONE_LANDING === 'true') {
+      window.location.href = 'http://localhost:3000/login';
+    } else {
+      navigate(ROUTES.LOGIN);
+    }
   };
 
   const handleCopyCommand = () => {
