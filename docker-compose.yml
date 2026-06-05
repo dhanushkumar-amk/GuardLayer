@@ -210,6 +210,10 @@ services:
       OUTPUT_GUARD_URL: http://output-guard:8002
       LLM_PROXY_URL: http://llm-proxy:8003
       AUDIT_SERVICE_URL: http://audit-service:8004
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
     depends_on:
       config-service:
         condition: service_healthy

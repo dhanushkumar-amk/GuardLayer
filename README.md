@@ -7,6 +7,13 @@
 </p>
 
 <p align="center">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green.svg">
+  <img alt="Architecture" src="https://img.shields.io/badge/architecture-microservices-blue.svg">
+  <img alt="Gateway" src="https://img.shields.io/badge/api-OpenAI_compatible-black.svg">
+  <img alt="Frontend" src="https://img.shields.io/badge/dashboard-React%20%2B%20Vite-61dafb.svg">
+</p>
+
+<p align="center">
   <img src="img/Hero section.png" alt="GuardLayer landing page" width="85%">
 </p>
 
@@ -14,12 +21,7 @@
   <img src="img/Analytics page.png" alt="GuardLayer analytics dashboard" width="85%">
 </p>
 
-<p align="center">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-green.svg">
-  <img alt="Architecture" src="https://img.shields.io/badge/architecture-microservices-blue.svg">
-  <img alt="Gateway" src="https://img.shields.io/badge/api-OpenAI_compatible-black.svg">
-  <img alt="Frontend" src="https://img.shields.io/badge/dashboard-React%20%2B%20Vite-61dafb.svg">
-</p>
+
 
 GuardLayer sits in front of your LLM traffic and applies configurable safety checks before and after every model call. It provides an OpenAI-compatible gateway for applications, a web dashboard for operators, per-key policy management, CSV exports, real-time threat monitoring, and an audit trail for every request.
 
