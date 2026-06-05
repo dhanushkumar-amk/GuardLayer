@@ -7,6 +7,14 @@
 </p>
 
 <p align="center">
+  <img src="img/Hero section.png" alt="GuardLayer landing page" width="85%">
+</p>
+
+<p align="center">
+  <img src="img/Analytics page.png" alt="GuardLayer analytics dashboard" width="85%">
+</p>
+
+<p align="center">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green.svg">
   <img alt="Architecture" src="https://img.shields.io/badge/architecture-microservices-blue.svg">
   <img alt="Gateway" src="https://img.shields.io/badge/api-OpenAI_compatible-black.svg">
@@ -27,15 +35,11 @@ It is designed for teams that want a self-hosted control plane for LLM usage wit
 - Self-hosted microservice architecture using Docker, PostgreSQL, Redis, TypeScript, Python, and React
 - Admin dashboard for keys, logs, analytics, and configuration tuning
 
-## Screenshots
 
-<p align="center">
-  <img src="img/Hero section.png" alt="GuardLayer landing page" width="85%">
-</p>
 
-<p align="center">
-  <img src="img/Analytics page.png" alt="GuardLayer analytics dashboard" width="85%">
-</p>
+
+
+
 
 ## Architecture
 
