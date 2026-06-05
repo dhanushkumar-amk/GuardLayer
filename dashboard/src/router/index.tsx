@@ -26,13 +26,17 @@ const PublicGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return !isAuthenticated ? <>{children}</> : <Navigate to={ROUTES.OVERVIEW} replace />;
 };
 
+const isStandaloneLanding = import.meta.env.VITE_STANDALONE_LANDING === 'true';
+
 export const routes: RouteObject[] = [
   {
     path: ROUTES.LANDING,
-    element: (
+    element: isStandaloneLanding ? (
       <PublicGuard>
         <Landing />
       </PublicGuard>
+    ) : (
+      <Navigate to={ROUTES.LOGIN} replace />
     ),
   },
   {

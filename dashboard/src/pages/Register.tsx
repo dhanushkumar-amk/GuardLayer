@@ -62,7 +62,7 @@ export const Register: React.FC = () => {
         
         {/* Brand/Logo Header */}
         <div className="flex flex-col items-center space-y-3 text-center">
-          <Link to={ROUTES.LANDING} className="flex items-center gap-2 font-bold text-xl text-white hover:opacity-95 transition-opacity">
+          <Link to={import.meta.env.VITE_STANDALONE_LANDING === 'true' ? ROUTES.LANDING : ROUTES.LOGIN} className="flex items-center gap-2 font-bold text-xl text-white hover:opacity-95 transition-opacity">
             <div className="w-9 h-9 rounded-lg bg-[#ff5a1f] flex items-center justify-center shadow-lg shadow-orange-500/20">
               <svg
                 className="h-5 w-5 text-white"
